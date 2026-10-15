@@ -4,5 +4,5 @@ namespace FoodCaseOpener.Api.Services;
 
 public interface ICaseOpeningService
 {
-    Task<OpenCaseResultDto> OpenCaseAsync(int caseId);
+    Task<OpenCaseResultDto> OpenCaseAsync(int caseId, OpenCaseRequestDto? request = null);
 }

@@ -26,3 +26,21 @@ export interface RecipeDetail {
   instructions: string;
   ingredients: RecipeIngredient[];
 }
+
+export interface RecipeIngredientInput {
+  ingredientId?: number;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface CreateOrUpdateRecipeDto {
+  name: string;
+  description: string;
+  imageUrl?: string | null;
+  cookingTimeMinutes: number;
+  estimatedCost?: number | null;
+  difficulty: string;
+  instructions: string;
+  ingredients: RecipeIngredientInput[];
+}

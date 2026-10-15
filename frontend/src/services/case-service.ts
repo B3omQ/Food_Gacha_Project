@@ -1,18 +1,49 @@
 import { apiClient } from '@/lib/api-client';
-import { CaseDetail, CaseSummary, OpenCaseResult } from '@/types/case';
+import { CaseDetail, CaseSummary, CreateOrUpdateCaseDto, OpenCaseRequest, OpenCaseResult } from '@/types/case';
 
 export const caseService = {
   async getActiveCases(): Promise<CaseSummary[]> {
-    return apiClient<CaseSummary[]>('api/cases');
+    return apiClient<CaseSummary[]>('api/cases?includeInactive=false');
+  },
+
+  async getAllCases(): Promise<CaseSummary[]> {
+    return apiClient<CaseSummary[]>('api/cases?includeInactive=true');
   },
 
   async getCaseById(caseId: number): Promise<CaseDetail> {
     return apiClient<CaseDetail>(`api/cases/${caseId}`);
   },
 
-  async openCase(caseId: number): Promise<OpenCaseResult> {
+  async createCase(data: CreateOrUpdateCaseDto): Promise<CaseSummary> {
+    return apiClient<CaseSummary>('api/cases', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateCase(caseId: number, data: CreateOrUpdateCaseDto): Promise<void> {
+    return apiClient<void>(`api/cases/${caseId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteCase(caseId: number): Promise<void> {
+    return apiClient<void>(`api/cases/${caseId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async toggleCaseStatus(caseId: number): Promise<{ id: number; isActive: boolean }> {
+    return apiClient<{ id: number; isActive: boolean }>(`api/cases/${caseId}/toggle-status`, {
+      method: 'PATCH',
+    });
+  },
+
+  async openCase(caseId: number, request?: OpenCaseRequest): Promise<OpenCaseResult> {
     return apiClient<OpenCaseResult>(`api/cases/${caseId}/open`, {
       method: 'POST',
+      body: request ? JSON.stringify(request) : undefined,
     });
   },
 };

@@ -1,1 +1,106 @@
 @import "tailwindcss";
+
+:root {
+  --bg: #17191d;
+  --panel: #20232a;
+  --line: #30343d;
+  --text: #ece9e2;
+  --muted: #8d929c;
+  --gold: #e4ae39;
+  --on-gold: #1a1408;
+
+  --r1: #4b69ff;
+  --r2: #8847ff;
+  --r3: #d32ce6;
+  --r4: #eb4b4b;
+  --r5: #e4ae39;
+
+  --radius: 3px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f1efea;
+    --panel: #fbfaf7;
+    --line: #d8d4ca;
+    --text: #1d1f24;
+    --muted: #6b707a;
+    --on-gold: #1a1408;
+  }
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, .font-heading {
+  font-family: var(--font-heading);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Animations for case opening reveal */
+@keyframes caseReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-case-reveal {
+  animation: caseReveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes winnerCardPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(228, 174, 57, 0);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 0 16px rgba(228, 174, 57, 0.35);
+  }
+}
+
+.animate-winner-pulse {
+  animation: winnerCardPulse 1.2s ease-in-out infinite;
+}
+
+/* Common utility classes using tokens */
+.btn-gold {
+  background-color: var(--gold);
+  color: var(--on-gold);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.15rem;
+  padding: 10px 28px;
+  border-radius: var(--radius);
+  border: none;
+  transition: opacity 0.15s ease;
+}
+
+.btn-gold:hover {
+  opacity: 0.92;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 8px 18px;
+  border-radius: var(--radius);
+  transition: border-color 0.15s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--muted);
+}

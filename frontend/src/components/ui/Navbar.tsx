@@ -1,55 +1,80 @@
 'use client';
 
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { fridgeStorage } from '@/lib/fridge-storage';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const [fridgeCount, setFridgeCount] = useState<number>(0);
+
+  useEffect(() => {
+    const updateCount = () => {
+      setFridgeCount(fridgeStorage.getItems().length);
+    };
+
+    updateCount();
+    window.addEventListener('fridge-updated', updateCount);
+    return () => window.removeEventListener('fridge-updated', updateCount);
+  }, []);
 
   const navLinks = [
-    { href: '/', label: 'Hòm Món Ăn' },
-    { href: '/recipes', label: 'Kho Công Thức' },
+    { href: '/', label: 'Hòm món ăn' },
+    { href: '/recipes', label: 'Công thức' },
+    { href: '/admin', label: 'Quản lý' },
   ];
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-neutral-950/80 border-b border-neutral-800/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:scale-105 transition-transform">
-            <span className="text-xl">🍲</span>
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-300 to-yellow-200">
-                FOOD CASE OPENER
-              </span>
-              <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                CS2 Vibe
-              </span>
-            </div>
-            <p className="text-xs text-neutral-400 hidden sm:block">
-              Hôm nay nấu gì? Mở hòm ngay!
-            </p>
-          </div>
+    <header className="h-[56px] border-b border-[var(--line)] bg-[var(--bg)] sticky top-0 z-50">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
+        {/* Logo */}
+        <Link
+          href="/"
+          className="font-heading font-bold text-[22px] tracking-wide text-[var(--text)] hover:text-white transition-colors"
+        >
+          Food Case Opener
         </Link>
 
-        <nav className="flex items-center gap-1 sm:gap-2">
+        {/* Navigation */}
+        <nav className="flex items-center gap-4 sm:gap-6 text-[15px]">
           {navLinks.map((link) => {
-            const isActive = pathname === link.href;
+            const isActive =
+              link.href === '/'
+                ? pathname === '/' || pathname.startsWith('/cases')
+                : pathname.startsWith(link.href);
+
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`relative py-3.5 transition-colors ${
                   isActive
-                    ? 'bg-neutral-800 text-amber-400 border border-neutral-700 shadow-sm'
-                    : 'text-neutral-300 hover:text-white hover:bg-neutral-800/50'
+                    ? 'text-[var(--text)] font-medium after:content-[""] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[var(--gold)]'
+                    : 'text-[var(--muted)] hover:text-[var(--text)] hidden sm:inline-block'
                 }`}
               >
                 {link.label}
               </Link>
             );
           })}
+
+          {/* Fridge Link */}
+          <Link
+            href="/fridge"
+            className={`relative py-3.5 transition-colors flex items-center gap-1.5 ${
+              pathname === '/fridge'
+                ? 'text-[var(--text)] font-medium after:content-[""] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[var(--gold)]'
+                : 'text-[var(--muted)] hover:text-[var(--text)]'
+            }`}
+          >
+            <span>Tủ lạnh</span>
+            {fridgeCount > 0 && (
+              <span className="font-bold text-[var(--gold)] ml-0.5">
+                {fridgeCount}
+              </span>
+            )}
+          </Link>
         </nav>
       </div>
     </header>

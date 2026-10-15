@@ -5,71 +5,72 @@ interface RecipeCardProps {
   recipe: RecipeSummary;
 }
 
+export function getDifficultyColor(difficulty?: string): string {
+  switch (difficulty?.toLowerCase()) {
+    case 'easy':
+      return 'var(--r1)';
+    case 'hard':
+      return 'var(--r4)';
+    default:
+      return 'var(--r2)';
+  }
+}
+
+export function formatRecipeSubtext(minutes: number, cost?: number | null): string {
+  const parts: string[] = [`${minutes} phút`];
+  if (cost != null && cost > 0) {
+    const costText = cost >= 1000 ? `${Math.round(cost / 1000)}k` : `${cost}đ`;
+    parts.push(`khoảng ${costText}`);
+  }
+  return parts.join(', ');
+}
+
 export default function RecipeCard({ recipe }: RecipeCardProps) {
-  const getDifficultyBadge = (difficulty: string) => {
-    switch (difficulty?.toLowerCase()) {
-      case 'easy':
-        return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
-      case 'hard':
-        return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
-      default:
-        return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
-    }
-  };
+  const borderColor = getDifficultyColor(recipe.difficulty);
+  const subtext = formatRecipeSubtext(recipe.cookingTimeMinutes, recipe.estimatedCost);
 
   return (
-    <div className="group rounded-2xl bg-neutral-900/60 border border-neutral-800 hover:border-amber-500/40 p-4 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/5 hover:-translate-y-1 flex flex-col justify-between">
-      <div>
-        {/* Image */}
-        <div className="relative w-full h-44 rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800/80 mb-3.5">
+    <div
+      className="bg-[var(--panel)] border border-[var(--line)] hover:border-[var(--muted)] transition-colors rounded-[var(--radius)] flex flex-col justify-between overflow-hidden"
+      style={{ borderBottom: `4px solid ${borderColor}` }}
+    >
+      <div className="p-3">
+        {/* Image 4:3 */}
+        <div className="relative w-full aspect-[4/3] rounded-[2px] overflow-hidden bg-[var(--bg)] mb-3">
           {recipe.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={recipe.imageUrl}
               alt={recipe.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-4xl">
-              🍳
+            <div className="w-full h-full flex items-center justify-center text-[var(--muted)]">
+              <div className="w-12 h-12 rounded-full border border-[var(--line)] bg-[var(--bg)] flex items-center justify-center text-xs">
+                Món ăn
+              </div>
             </div>
           )}
-
-          <div
-            className={`absolute top-2.5 right-2.5 text-[11px] font-bold px-2 py-0.5 rounded-full border backdrop-blur-md ${getDifficultyBadge(
-              recipe.difficulty
-            )}`}
-          >
-            {recipe.difficulty}
-          </div>
         </div>
 
-        {/* Title & Desc */}
-        <h3 className="font-bold text-lg text-white group-hover:text-amber-400 transition-colors line-clamp-1">
+        {/* Title */}
+        <h3 className="font-semibold text-[15px] text-[var(--text)] line-clamp-1 leading-snug">
           {recipe.name}
         </h3>
-        <p className="mt-1.5 text-xs text-neutral-400 line-clamp-2 leading-relaxed">
-          {recipe.description}
+
+        {/* Subtitle */}
+        <p className="mt-1 text-[13px] text-[var(--muted)]">
+          {subtext}
         </p>
       </div>
 
-      {/* Meta & Button */}
-      <div className="mt-4 pt-3 border-t border-neutral-800/80 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs text-neutral-400">
-          <span>⏱ {recipe.cookingTimeMinutes}m</span>
-          {recipe.estimatedCost && (
-            <span className="font-mono text-amber-300/90 font-medium">
-              ~{recipe.estimatedCost.toLocaleString('vi-VN')}đ
-            </span>
-          )}
-        </div>
-
+      {/* Link to recipe */}
+      <div className="px-3 pb-3 pt-1">
         <Link
           href={`/recipes/${recipe.id}`}
-          className="text-xs font-semibold text-neutral-300 hover:text-amber-400 transition-colors flex items-center gap-1 group-hover:translate-x-0.5"
+          className="text-[13px] text-[var(--text)] hover:underline inline-block"
         >
-          <span>Chi tiết</span>
-          <span>→</span>
+          Xem công thức
         </Link>
       </div>
     </div>

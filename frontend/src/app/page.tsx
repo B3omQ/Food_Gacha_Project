@@ -1,131 +1,348 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import CaseCard from '@/components/case-opening/CaseCard';
+import Link from 'next/link';
+import Roulette from '@/components/case-opening/Roulette';
+import OpeningResult from '@/components/case-opening/OpeningResult';
 import { caseService } from '@/services/case-service';
-import { CaseSummary } from '@/types/case';
+import { fridgeStorage } from '@/lib/fridge-storage';
+import { CaseSummary, CaseDetail, OpenCaseRequest, OpenCaseResult } from '@/types/case';
+import { RecipeSummary } from '@/types/recipe';
+import { FridgeItem } from '@/types/fridge';
 
 export default function HomePage() {
   const [cases, setCases] = useState<CaseSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
+  const [currentCase, setCurrentCase] = useState<CaseDetail | null>(null);
+  const [loadingCases, setLoadingCases] = useState(true);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCases = async () => {
+  // Fridge integration
+  const [fridgeItems, setFridgeItems] = useState<FridgeItem[]>([]);
+  const [onlyCookableMode, setOnlyCookableMode] = useState(false);
+
+  // Spinning / Opening states
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [winnerRecipe, setWinnerRecipe] = useState<RecipeSummary | null>(null);
+  const [openResult, setOpenResult] = useState<OpenCaseResult | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [spinError, setSpinError] = useState<string | null>(null);
+
+  // Load cases list on mount
+  useEffect(() => {
+    async function loadCases() {
+      try {
+        setLoadingCases(true);
+        setError(null);
+        const data = await caseService.getActiveCases();
+        setCases(data);
+        if (data.length > 0) {
+          setSelectedCaseId(data[0].id);
+        }
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Không thể tải danh sách hòm. Hãy kiểm tra server ASP.NET Core.'
+        );
+      } finally {
+        setLoadingCases(false);
+      }
+    }
+    loadCases();
+
+    setFridgeItems(fridgeStorage.getItems());
+    const onFridgeChange = () => setFridgeItems(fridgeStorage.getItems());
+    window.addEventListener('fridge-updated', onFridgeChange);
+    return () => window.removeEventListener('fridge-updated', onFridgeChange);
+  }, []);
+
+  // Load selected case detail
+  useEffect(() => {
+    if (!selectedCaseId) return;
+
+    async function loadDetail() {
+      try {
+        setLoadingDetail(true);
+        setSpinError(null);
+        const detail = await caseService.getCaseById(selectedCaseId!);
+        setCurrentCase(detail);
+        setShowResult(false);
+        setWinnerRecipe(null);
+        setOpenResult(null);
+      } catch (err: unknown) {
+        setSpinError(
+          err instanceof Error ? err.message : 'Không thể tải thông tin hòm được chọn.'
+        );
+      } finally {
+        setLoadingDetail(false);
+      }
+    }
+    loadDetail();
+  }, [selectedCaseId]);
+
+  // Check which dishes are cookable from fridge
+  const fridgeNames = new Set(fridgeItems.map((i) => i.name.trim().toLowerCase()));
+  const isRecipeCookable = (ingredients?: Array<{ name: string }>) => {
+    if (!ingredients || ingredients.length === 0) return true;
+    return ingredients.every((ing) => fridgeNames.has(ing.name.trim().toLowerCase()));
+  };
+
+  const cookableDishes = currentCase
+    ? currentCase.recipes.filter((r) => isRecipeCookable(r.ingredients))
+    : [];
+
+  const roulettePool =
+    onlyCookableMode && cookableDishes.length > 0
+      ? cookableDishes
+      : currentCase?.recipes || [];
+
+  const handleOpenCase = async () => {
+    if (isRequesting || isSpinning || !currentCase || !selectedCaseId) return;
+
+    if (onlyCookableMode && cookableDishes.length === 0) {
+      setSpinError('Tủ lạnh chưa đủ nguyên liệu để nấu món nào trong hòm này.');
+      return;
+    }
+
     try {
-      setLoading(true);
-      setError(null);
-      const data = await caseService.getActiveCases();
-      setCases(data);
+      setSpinError(null);
+      setIsRequesting(true);
+      setShowResult(false);
+
+      const request: OpenCaseRequest = {
+        availableIngredientIds: fridgeItems.filter((i) => i.id).map((i) => i.id!),
+        availableIngredientNames: fridgeItems.map((i) => i.name),
+        onlyCookableWithAvailableIngredients: onlyCookableMode,
+      };
+
+      const result = await caseService.openCase(selectedCaseId, request);
+      setWinnerRecipe(result.recipe);
+      setOpenResult(result);
+      setIsRequesting(false);
+      setIsSpinning(true);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Không thể kết nối đến Backend. Hãy kiểm tra server ASP.NET Core đang chạy.';
-      setError(message);
-    } finally {
-      setLoading(false);
+      setIsRequesting(false);
+      setIsSpinning(false);
+      setSpinError(
+        err instanceof Error ? err.message : 'Đã có lỗi xảy ra khi mở hòm.'
+      );
     }
   };
 
-  useEffect(() => {
-    fetchCases();
-  }, []);
+  const handleSpinEnd = () => {
+    setIsSpinning(false);
+    setShowResult(true);
+  };
+
+  const handleReset = () => {
+    setShowResult(false);
+    setWinnerRecipe(null);
+    setOpenResult(null);
+  };
+
+  const getRarityColor = (difficulty?: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'easy':
+        return 'var(--r1)';
+      case 'hard':
+        return 'var(--r4)';
+      default:
+        return 'var(--r2)';
+    }
+  };
+
+  if (loadingCases) {
+    return (
+      <div className="py-20 text-left">
+        <p className="text-sm text-[var(--muted)]">Đang tải danh sách hòm...</p>
+      </div>
+    );
+  }
+
+  if (error || cases.length === 0) {
+    return (
+      <div className="py-12 text-left space-y-4">
+        <h2 className="text-xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)]">
+          {error || 'Chưa có hòm nào hoạt động'}
+        </h2>
+        <p className="text-sm text-[var(--muted)]">
+          Hãy chắc chắn server ASP.NET Core đang chạy và cơ sở dữ liệu đã được tạo.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-12">
-      {/* Hero Header */}
-      <section className="relative rounded-3xl overflow-hidden border border-neutral-800 bg-gradient-to-b from-neutral-900/90 via-neutral-900/40 to-neutral-950 p-8 sm:p-12 text-center">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        
-        <div className="relative z-10 max-w-2xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <span>🎲</span> Giải pháp cho câu hỏi &ldquo;Hôm nay ăn gì?&rdquo;
-          </div>
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
-            MỞ HÒM <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">ẨM THỰC</span>
+    <div className="space-y-8 text-left pb-16">
+      {/* 1. Case Tab Selector */}
+      <div className="flex flex-wrap gap-2 border-b border-[var(--line)] pb-3">
+        {cases.map((c) => {
+          const isSelected = c.id === selectedCaseId;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setSelectedCaseId(c.id)}
+              className={`px-3 py-1.5 text-sm rounded-[var(--radius)] transition-colors cursor-pointer border ${
+                isSelected
+                  ? 'bg-[var(--panel)] text-[var(--text)] border-[var(--muted)] font-medium'
+                  : 'bg-transparent text-[var(--muted)] border-[var(--line)] hover:text-[var(--text)]'
+              }`}
+            >
+              {c.name} ({c.recipeCount})
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 2. Selected Case Title & Short Description */}
+      {currentCase && (
+        <div className="space-y-1">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)] leading-tight tracking-tight">
+            {currentCase.name}
           </h1>
-          <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
-            Chọn hòm theo phong cách bạn thích, quay roulette kiểu CS2 và nhận ngay công thức nấu ăn ngẫu nhiên chuẩn vị!
+          <p className="text-sm sm:text-base text-[var(--muted)] max-w-[52ch]">
+            {currentCase.description}
           </p>
         </div>
-      </section>
+      )}
 
-      {/* Cases Section */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between border-b border-neutral-800/80 pb-4">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-              <span>📦</span> Danh Sách Hòm Đang Hoạt Động
-            </h2>
-            <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-              Mỗi hòm chứa tập hợp các món ăn với xác suất xuất hiện khác nhau
-            </p>
-          </div>
-          <button
-            onClick={fetchCases}
-            className="text-xs px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 transition-colors"
-          >
-            Làm mới ↻
-          </button>
+      {/* 3. Roulette Viewport */}
+      {loadingDetail ? (
+        <div className="h-[176px] w-full bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] flex items-center justify-center">
+          <p className="text-sm text-[var(--muted)]">Đang tải danh sách món...</p>
         </div>
+      ) : (
+        currentCase && (
+          <Roulette
+            items={roulettePool}
+            winnerRecipe={winnerRecipe}
+            isSpinning={isSpinning}
+            onSpinEnd={handleSpinEnd}
+          />
+        )
+      )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((n) => (
-              <div
-                key={n}
-                className="h-80 rounded-2xl bg-neutral-900/50 border border-neutral-800 animate-pulse p-5 flex flex-col justify-between"
-              >
-                <div className="w-full h-44 bg-neutral-800/60 rounded-xl" />
-                <div className="space-y-2 mt-4">
-                  <div className="h-5 bg-neutral-800/60 rounded w-2/3" />
-                  <div className="h-4 bg-neutral-800/40 rounded w-full" />
-                </div>
-                <div className="h-10 bg-neutral-800/40 rounded-xl mt-4" />
-              </div>
-            ))}
+      {/* 4. Action Row */}
+      <div className="flex flex-wrap items-center gap-4 pt-1">
+        <button
+          type="button"
+          onClick={showResult ? handleReset : handleOpenCase}
+          disabled={isRequesting || isSpinning || loadingDetail}
+          className="btn-gold disabled:opacity-50 cursor-pointer"
+        >
+          {isSpinning
+            ? 'Đang mở...'
+            : isRequesting
+            ? 'Đang chuẩn bị...'
+            : showResult
+            ? 'Mở hòm khác'
+            : 'Mở hòm'}
+        </button>
+
+        {/* Cookable toggle */}
+        <label className="flex items-center gap-2 text-sm text-[var(--muted)] cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={onlyCookableMode}
+            onChange={(e) => setOnlyCookableMode(e.target.checked)}
+            className="w-4 h-4 rounded-[var(--radius)] bg-[var(--panel)] border-[var(--line)]"
+          />
+          <span>Chỉ quay món nấu được từ tủ lạnh ({cookableDishes.length}/{currentCase?.recipes.length || 0})</span>
+        </label>
+
+        {/* Inline result summary text */}
+        {showResult && openResult && (
+          <div className="text-sm text-[var(--text)]">
+            Hôm nay ăn <strong className="text-[var(--text)]">{openResult.recipe.name}</strong>, nấu khoảng {openResult.recipe.cookingTimeMinutes} phút
+            {openResult.recipe.estimatedCost ? `, tốn ${Math.round(openResult.recipe.estimatedCost / 1000)}k.` : '.'}
           </div>
         )}
 
-        {/* Error State */}
-        {!loading && error && (
-          <div className="p-8 rounded-2xl bg-rose-950/20 border border-rose-900/50 text-center space-y-4 max-w-lg mx-auto">
-            <span className="text-4xl">⚠️</span>
-            <h3 className="text-lg font-bold text-rose-300">Không thể tải danh sách hòm</h3>
-            <p className="text-xs text-neutral-400">{error}</p>
-            <p className="text-xs text-neutral-500">
-              Hãy chắc chắn Backend ASP.NET Core đang chạy trên cổng 5000 và đã kết nối Database.
-            </p>
-            <button
-              onClick={fetchCases}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white transition-all"
-            >
-              Thử lại ngay
-            </button>
+        {spinError && (
+          <div className="text-sm text-[var(--r4)]">
+            {spinError}
           </div>
         )}
+      </div>
 
-        {/* Empty State */}
-        {!loading && !error && cases.length === 0 && (
-          <div className="p-12 rounded-2xl bg-neutral-900/40 border border-neutral-800 text-center space-y-3">
-            <span className="text-4xl">📭</span>
-            <h3 className="text-lg font-bold text-white">Chưa có hòm nào hoạt động</h3>
-            <p className="text-sm text-neutral-400">
-              Hãy chạy database seeding trong backend để nạp dữ liệu hòm mẫu.
-            </p>
-          </div>
-        )}
+      {/* Detailed Result Card */}
+      {showResult && openResult && (
+        <OpeningResult result={openResult} onReset={handleReset} />
+      )}
 
-        {/* Case Cards Grid */}
-        {!loading && !error && cases.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cases.map((fc) => (
-              <CaseCard key={fc.id} foodCase={fc} />
-            ))}
+      {/* 5. Dishes in Case / Cookable right now grid */}
+      {currentCase && currentCase.recipes.length > 0 && (
+        <div className="space-y-3 pt-6 border-t border-[var(--line)]">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)]">
+              Món ăn trong hòm
+            </h2>
+            <span className="text-xs text-[var(--muted)]">
+              Viền màu là độ khó: xanh dễ, tím vừa, đỏ khó
+            </span>
           </div>
-        )}
-      </section>
+
+          <div
+            className="grid gap-2"
+            style={{
+              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+            }}
+          >
+            {currentCase.recipes.map((recipe) => {
+              const rarityColor = getRarityColor(recipe.difficulty);
+              const cookable = isRecipeCookable(recipe.ingredients);
+
+              return (
+                <Link
+                  key={recipe.recipeId}
+                  href={`/recipes/${recipe.recipeId}`}
+                  style={{
+                    borderBottomColor: rarityColor,
+                    borderBottomWidth: '4px',
+                  }}
+                  className="bg-[var(--panel)] border border-[var(--line)] hover:border-[var(--muted)] rounded-[var(--radius)] p-2.5 flex flex-col justify-between transition-colors"
+                >
+                  <div className="aspect-[4/3] w-full bg-[var(--bg)] rounded-[2px] overflow-hidden mb-2">
+                    {recipe.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={recipe.imageUrl}
+                        alt={recipe.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[var(--muted)] text-xs">
+                        đĩa
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-[var(--text)] truncate leading-tight">
+                      {recipe.name}
+                    </h3>
+                    <p className="text-xs text-[var(--muted)] mt-1 truncate">
+                      {recipe.cookingTimeMinutes} phút
+                      {recipe.estimatedCost
+                        ? `, ${Math.round(recipe.estimatedCost / 1000)}k`
+                        : ''}
+                    </p>
+                    {cookable && (
+                      <span className="text-[11px] text-[var(--text)] mt-1 block">
+                        ✓ Nấu được ngay
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

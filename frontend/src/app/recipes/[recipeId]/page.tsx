@@ -38,135 +38,133 @@ export default function RecipeDetailPage({
     fetchRecipe();
   }, [recipeId]);
 
+  const getRarityColor = (difficulty?: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'easy':
+        return 'var(--r1)';
+      case 'hard':
+        return 'var(--r4)';
+      default:
+        return 'var(--r2)';
+    }
+  };
+
   if (loading) {
     return (
-      <div className="py-24 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-neutral-400">Đang tải công thức nấu ăn...</p>
+      <div className="py-20 text-left">
+        <p className="text-sm text-[var(--muted)]">Đang tải công thức nấu ăn...</p>
       </div>
     );
   }
 
   if (error || !recipe) {
     return (
-      <div className="py-16 max-w-lg mx-auto text-center space-y-4">
-        <span className="text-4xl">🍲</span>
-        <h2 className="text-xl font-bold text-white">Không tìm thấy công thức</h2>
-        <p className="text-sm text-neutral-400">{error || 'Món ăn không tồn tại.'}</p>
+      <div className="py-16 text-left space-y-4">
+        <h2 className="text-xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)]">
+          {error || 'Công thức không tồn tại.'}
+        </h2>
         <Link
-          href="/"
-          className="inline-block mt-4 px-4 py-2 rounded-xl bg-neutral-800 text-sm font-semibold text-white hover:bg-neutral-700"
+          href="/recipes"
+          className="text-sm text-[var(--text)] underline hover:text-[var(--gold)]"
         >
-          ← Về trang chủ
+          Quay lại danh sách công thức
         </Link>
       </div>
     );
   }
 
+  const rarityColor = getRarityColor(recipe.difficulty);
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Back button */}
-      <Link
-        href="/"
-        className="text-xs text-neutral-400 hover:text-amber-400 transition-colors inline-flex items-center gap-1.5"
+    <div className="space-y-6 text-left pb-16">
+      {/* Top back link */}
+      <div>
+        <Link
+          href="/recipes"
+          className="text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+        >
+          ← Quay lại danh sách công thức
+        </Link>
+      </div>
+
+      {/* Main Recipe Header Card */}
+      <div
+        style={{ borderBottomColor: rarityColor, borderBottomWidth: '4px' }}
+        className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-6 space-y-4"
       >
-        ← Quay lại trang chủ
-      </Link>
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Image */}
+          <div className="w-full md:w-80 aspect-[4/3] bg-[var(--bg)] border border-[var(--line)] rounded-[var(--radius)] overflow-hidden flex-shrink-0">
+            {recipe.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={recipe.imageUrl}
+                alt={recipe.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[var(--muted)] text-sm">
+                đĩa
+              </div>
+            )}
+          </div>
 
-      {/* Header and Image */}
-      <div className="relative rounded-3xl overflow-hidden border border-neutral-800 bg-neutral-900/50 shadow-2xl">
-        <div className="relative h-72 sm:h-96 w-full bg-neutral-950">
-          {recipe.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={recipe.imageUrl}
-              alt={recipe.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-7xl bg-neutral-900">
-              🍲
-            </div>
-          )}
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent" />
-
-          {/* Floating badges */}
-          <div className="absolute bottom-6 left-6 right-6">
-            <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 mb-2">
-              Công Thức Món Ăn
-            </span>
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-white">
+          {/* Details */}
+          <div className="space-y-3 flex-1">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)] leading-tight tracking-tight">
               {recipe.name}
             </h1>
-            <p className="text-sm text-neutral-300 mt-2 max-w-2xl leading-relaxed">
+            <p className="text-sm text-[var(--muted)] max-w-[52ch]">
               {recipe.description}
             </p>
-          </div>
-        </div>
 
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-3 divide-x divide-neutral-800 border-t border-neutral-800 bg-neutral-950/90 text-center py-4">
-          <div>
-            <span className="text-xs text-neutral-500 block">Thời gian nấu</span>
-            <span className="text-base sm:text-lg font-bold text-white">
-              ⏱ {recipe.cookingTimeMinutes} phút
-            </span>
-          </div>
-          <div>
-            <span className="text-xs text-neutral-500 block">Chi phí ước tính</span>
-            <span className="text-base sm:text-lg font-bold text-amber-400 font-mono">
-              {recipe.estimatedCost ? `${recipe.estimatedCost.toLocaleString('vi-VN')}đ` : 'Bình dân'}
-            </span>
-          </div>
-          <div>
-            <span className="text-xs text-neutral-500 block">Độ khó</span>
-            <span className="text-base sm:text-lg font-bold text-blue-400">
-              {recipe.difficulty}
-            </span>
+            <div className="pt-2 text-sm text-[var(--text)]">
+              <span>{recipe.cookingTimeMinutes} phút</span>
+              {recipe.estimatedCost && (
+                <span>, khoảng {Math.round(recipe.estimatedCost / 1000)}k</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Ingredients & Instructions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Ingredients (1 column) */}
-        <div className="md:col-span-1 space-y-4">
-          <div className="rounded-2xl bg-neutral-900/60 border border-neutral-800 p-5">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
-              <span>🥕</span> Nguyên Liệu
-            </h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Ingredients */}
+        <div className="md:col-span-1 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5 space-y-4">
+          <h2 className="text-xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)]">
+            Nguyên liệu
+          </h2>
 
-            {recipe.ingredients.length === 0 ? (
-              <p className="text-xs text-neutral-500 italic">Chưa có danh sách nguyên liệu cụ thể.</p>
-            ) : (
-              <ul className="space-y-2.5 text-sm">
-                {recipe.ingredients.map((item) => (
-                  <li
-                    key={item.ingredientId}
-                    className="flex items-center justify-between py-1.5 border-b border-neutral-800/60 last:border-0"
-                  >
-                    <span className="text-neutral-300">{item.name}</span>
-                    <span className="font-semibold text-amber-400 font-mono text-xs">
-                      {item.quantity} {item.unit}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {recipe.ingredients.length === 0 ? (
+            <p className="text-xs text-[var(--muted)] italic">
+              Chưa có danh sách nguyên liệu cụ thể.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {recipe.ingredients.map((item) => (
+                <li
+                  key={item.ingredientId}
+                  className="flex items-center justify-between py-1 border-b border-[var(--line)] last:border-0"
+                >
+                  <span className="text-[var(--text)]">{item.name}</span>
+                  <span className="text-xs text-[var(--muted)]">
+                    {item.quantity} {item.unit}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* Instructions (2 columns) */}
-        <div className="md:col-span-2 space-y-4">
-          <div className="rounded-2xl bg-neutral-900/60 border border-neutral-800 p-6">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
-              <span>👨‍🍳</span> Hướng Dẫn Cách Nấu
-            </h2>
+        {/* Instructions */}
+        <div className="md:col-span-2 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-6 space-y-4">
+          <h2 className="text-xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)]">
+            Hướng dẫn cách nấu
+          </h2>
 
-            <div className="space-y-4 text-sm text-neutral-300 leading-relaxed whitespace-pre-line">
-              {recipe.instructions}
-            </div>
+          <div className="text-sm text-[var(--text)] leading-relaxed whitespace-pre-line">
+            {recipe.instructions}
           </div>
         </div>
       </div>

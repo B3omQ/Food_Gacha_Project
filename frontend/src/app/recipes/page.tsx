@@ -35,31 +35,32 @@ export default function RecipesListPage() {
   );
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800/80 pb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2">
-            <span>📖</span> Kho Công Thức Món Ăn
+    <div className="space-y-6 text-left pb-16">
+      {/* Header with sentence case title, description, and search on same row */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[var(--line)] pb-5">
+        <div className="space-y-1">
+          <h1 className="text-3xl sm:text-4xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)] tracking-tight">
+            Kho công thức món ăn
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-            Tổng hợp các món ngon hàng ngày đã được cấu hình trong các hòm roulette
+          <p className="text-sm text-[var(--muted)] max-w-[52ch]">
+            Tổng hợp các món ngon hàng ngày đã được cấu hình trong các hòm roulette.
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative w-full sm:w-72">
+        {/* Search input */}
+        <div className="relative w-full md:w-64">
           <input
             type="text"
             placeholder="Tìm kiếm món ăn..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-800 focus:border-amber-500 focus:outline-none text-sm text-white placeholder-neutral-500 transition-colors"
+            className="w-full px-3 py-1.5 text-sm rounded-[var(--radius)] bg-[var(--panel)] border border-[var(--line)] text-[var(--text)] placeholder-[var(--muted)] focus:outline-none"
           />
           {search && (
             <button
+              type="button"
               onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 hover:text-white"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
             >
               ✕
             </button>
@@ -67,50 +68,42 @@ export default function RecipesListPage() {
         </div>
       </div>
 
-      {/* Loading */}
+      {/* Difficulty color legend note */}
+      <div className="text-xs text-[var(--muted)]">
+        Viền màu là độ khó: xanh dễ, tím vừa, đỏ khó
+      </div>
+
+      {/* Loading state */}
       {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <div
-              key={n}
-              className="h-72 rounded-2xl bg-neutral-900/50 border border-neutral-800 animate-pulse p-4 flex flex-col justify-between"
-            >
-              <div className="w-full h-40 bg-neutral-800/60 rounded-xl" />
-              <div className="space-y-2 mt-3">
-                <div className="h-5 bg-neutral-800/60 rounded w-2/3" />
-                <div className="h-3 bg-neutral-800/40 rounded w-full" />
-              </div>
-              <div className="h-8 bg-neutral-800/40 rounded-xl mt-3" />
-            </div>
-          ))}
+        <div className="py-12">
+          <p className="text-sm text-[var(--muted)]">Đang tải danh sách món ăn...</p>
         </div>
       )}
 
-      {/* Error */}
+      {/* Error state */}
       {!loading && error && (
-        <div className="p-8 rounded-2xl bg-rose-950/20 border border-rose-900/50 text-center space-y-3 max-w-md mx-auto">
-          <span className="text-3xl">⚠️</span>
-          <p className="text-sm text-rose-300">{error}</p>
+        <div className="p-4 rounded-[var(--radius)] bg-[var(--panel)] border border-[var(--line)] space-y-3 max-w-md">
+          <p className="text-sm text-[var(--r4)]">{error}</p>
           <button
+            type="button"
             onClick={fetchRecipes}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white"
+            className="btn-secondary text-xs"
           >
             Thử lại
           </button>
         </div>
       )}
 
-      {/* Empty */}
+      {/* Empty state */}
       {!loading && !error && filteredRecipes.length === 0 && (
-        <div className="text-center py-16 text-neutral-400">
-          <span className="text-4xl block mb-2">🔍</span>
+        <div className="py-12 text-sm text-[var(--muted)]">
           Không tìm thấy món ăn nào phù hợp với từ khóa &ldquo;{search}&rdquo;.
         </div>
       )}
 
-      {/* Grid */}
+      {/* Recipe Cards Grid */}
       {!loading && !error && filteredRecipes.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredRecipes.map((recipe) => (
             <RecipeCard key={recipe.id} recipe={recipe} />
           ))}

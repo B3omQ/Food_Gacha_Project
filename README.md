@@ -160,13 +160,28 @@ Mở trình duyệt truy cập: **`http://localhost:3000`**
 
 ## 📡 Danh Sách API Endpoints
 
+### 📦 Hòm Món Ăn (Cases CRUD)
 | Phương thức | Endpoint | Mô tả |
 | :--- | :--- | :--- |
-| `GET` | `/api/cases` | Lấy danh sách các hòm món ăn đang hoạt động |
+| `GET` | `/api/cases` | Lấy danh sách hòm (`?includeInactive=true` để lấy cả hòm ẩn) |
 | `GET` | `/api/cases/{caseId}` | Lấy chi tiết hòm và danh sách món ăn + trọng số |
+| `POST` | `/api/cases` | Tạo hòm mới kèm danh sách món và trọng số rơi |
+| `PUT` | `/api/cases/{caseId}` | Cập nhật thông tin hòm và danh sách món |
+| `DELETE` | `/api/cases/{caseId}` | Xóa hòm khỏi cơ sở dữ liệu |
+| `PATCH` | `/api/cases/{caseId}/toggle-status` | Bật / tắt trạng thái hoạt động của hòm |
 | `POST` | `/api/cases/{caseId}/open` | Mở hòm ngẫu nhiên theo trọng số (Backend tính toán) |
+
+### 🍳 Món Ăn & Nguyên Liệu (Recipes CRUD)
+| Phương thức | Endpoint | Mô tả |
+| :--- | :--- | :--- |
 | `GET` | `/api/recipes` | Lấy danh sách tất cả các món ăn |
-| `GET` | `/api/recipes/{recipeId}` | Lấy chi tiết món ăn kèm bảng nguyên liệu & hướng dẫn |
+| `GET` | `/api/recipes/{recipeId}` | Lấy chi tiết món kèm nguyên liệu & hướng dẫn nấu |
+| `POST` | `/api/recipes` | Thêm món ăn mới kèm danh sách nguyên liệu |
+| `PUT` | `/api/recipes/{recipeId}` | Cập nhật thông tin món ăn & nguyên liệu |
+| `DELETE` | `/api/recipes/{recipeId}` | Xóa món ăn khỏi cơ sở dữ liệu |
+| `GET` | `/api/recipes/ingredients` | Lấy danh mục các nguyên liệu hiện có |
+
+---
 
 ### Ví dụ kết quả mở hòm (`POST /api/cases/1/open`):
 ```json
@@ -181,11 +196,30 @@ Mở trình duyệt truy cập: **`http://localhost:3000`**
     "cookingTimeMinutes": 45,
     "estimatedCost": 65000,
     "difficulty": "Medium"
-  }
+  },
+  "isCookableNow": false,
+  "matchPercentage": 75.0,
+  "availableIngredients": [
+    { "ingredientId": 1, "name": "Thịt ba chỉ", "quantity": 500, "unit": "g" },
+    { "ingredientId": 2, "name": "Trứng gà", "quantity": 4, "unit": "quả" },
+    { "ingredientId": 19, "name": "Nước mắm", "quantity": 3, "unit": "muỗng canh" }
+  ],
+  "missingIngredients": [
+    { "ingredientId": 3, "name": "Nước dừa tươi", "quantity": 300, "unit": "ml" }
+  ]
 }
 ```
 
 ---
+
+## 🧊 Tính Năng Tủ Lạnh Thông Minh
+
+- **Quản lý tủ lạnh (`/fridge`):** Thêm nhanh các nguyên liệu bạn đang có sẵn tại nhà (chọn từ kho nguyên liệu hoặc gõ tùy ý).
+- **2 Chế độ mở hòm:**
+  1. **🎲 Tất cả món:** Mở bình thường. Khi trúng thưởng, hệ thống sẽ đối chiếu với đồ trong tủ để chỉ ra rõ:
+     - ✅ Các nguyên liệu đã có sẵn.
+     - ❌ Danh sách các nguyên liệu cần mua thêm kèm định lượng chính xác.
+  2. **🧊 Chỉ món nấu được ngay:** Chỉ quay vòng roulette trên các món ăn mà tủ lạnh của bạn đã đáp ứng đủ 100% nguyên liệu, giúp bạn không phải mất công đi chợ thêm.
 
 ## ✨ Trải Nghiệm Mở Hòm CS2
 

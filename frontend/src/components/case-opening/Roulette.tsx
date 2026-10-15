@@ -11,11 +11,12 @@ interface RouletteProps {
   onSpinEnd: () => void;
 }
 
-const ITEM_WIDTH = 180; // width of each card in pixels
-const ITEM_GAP = 12; // gap between cards
+const ITEM_WIDTH = 132;
+const ITEM_GAP = 8;
 const CARD_FULL_WIDTH = ITEM_WIDTH + ITEM_GAP;
 const TOTAL_ROULETTE_ITEMS = 65;
-const WINNER_INDEX = 52; // target index for winning card
+const WINNER_INDEX = 50;
+const DURATION_MS = 5500; // 5.5s spin duration
 
 export default function Roulette({
   items,
@@ -29,12 +30,13 @@ export default function Roulette({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Initialize procedural audio tick
+  // Procedural audio tick sound
   const playTick = () => {
     if (!soundEnabled) return;
     try {
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        audioContextRef.current = new (window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       }
       const ctx = audioContextRef.current;
       if (ctx.state === 'suspended') {
@@ -45,46 +47,48 @@ export default function Roulette({
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(800, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.04);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.04);
     } catch {
-      // Audio not permitted or not supported
+      // Audio not permitted
     }
   };
 
+  // Procedural victory chime
   const playChime = () => {
     if (!soundEnabled) return;
     try {
       if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        audioContextRef.current = new (window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       }
       const ctx = audioContextRef.current;
       if (ctx.state === 'suspended') {
         ctx.resume();
       }
-      const freqs = [523.25, 659.25, 783.99, 1046.5]; // C chord chime
+      const freqs = [523.25, 659.25, 783.99, 1046.5];
       freqs.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime + idx * 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.6);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.5);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(ctx.currentTime + idx * 0.08);
-        osc.stop(ctx.currentTime + idx * 0.08 + 0.65);
+        osc.stop(ctx.currentTime + idx * 0.08 + 0.55);
       });
     } catch {
       // ignore
     }
   };
 
-  // Build the items sequence when items change or when winner is supplied
+  // Build the roulette strip items whenever items or winnerRecipe change
   useEffect(() => {
     if (items.length === 0) return;
 
@@ -108,7 +112,7 @@ export default function Roulette({
     setRouletteList(list);
   }, [items, winnerRecipe]);
 
-  // Handle spinning animation
+  // Execute spinning animation
   useEffect(() => {
     if (!isSpinning || !stripRef.current || !containerRef.current || !winnerRecipe) {
       return;
@@ -117,30 +121,30 @@ export default function Roulette({
     const containerWidth = containerRef.current.clientWidth;
     const centerOffset = containerWidth / 2;
 
-    // Small random offset within the winning card (-30px to +30px)
-    const randomCardOffset = (Math.random() - 0.5) * 60;
+    // Small natural jitter offset within winning card (-28px to +28px)
+    const randomCardOffset = (Math.random() - 0.5) * 56;
     const targetTranslateX =
       WINNER_INDEX * CARD_FULL_WIDTH + ITEM_WIDTH / 2 - centerOffset + randomCardOffset;
 
     const strip = stripRef.current;
 
-    // Reset position first
+    // 1. Immediately reset strip to 0 without transition
     strip.style.transition = 'none';
     strip.style.transform = 'translateX(0px)';
+
+    // 2. Force browser reflow to ensure translateX(0px) is applied before animating
+    void strip.offsetWidth;
 
     // Sound tick interval loop simulation
     let tickCount = 0;
     const maxTicks = 45;
     const startTime = performance.now();
-    const duration = 6500; // 6.5s spin
-
     let animationFrameId: number;
 
     const tickLoop = (now: number) => {
       const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-
-      // Using easeOutCubic to calculate ticks
+      const progress = Math.min(elapsed / DURATION_MS, 1);
+      // Decelerating ticks
       const expectedTicks = Math.floor((1 - Math.pow(1 - progress, 3)) * maxTicks);
       if (expectedTicks > tickCount) {
         playTick();
@@ -152,17 +156,18 @@ export default function Roulette({
       }
     };
 
-    // Trigger animation in next frame
+    // 3. Start smooth CS-style animation using cubic-bezier curve
     requestAnimationFrame(() => {
-      strip.style.transition = `transform ${duration}ms cubic-bezier(0.12, 0.8, 0.25, 1)`;
+      strip.style.transition = `transform ${DURATION_MS}ms cubic-bezier(.12, .72, .08, 1)`;
       strip.style.transform = `translateX(-${targetTranslateX}px)`;
       animationFrameId = requestAnimationFrame(tickLoop);
     });
 
+    // 4. Conclude spin when animation finishes
     const timer = setTimeout(() => {
       playChime();
       onSpinEnd();
-    }, duration + 200);
+    }, DURATION_MS + 150);
 
     return () => {
       clearTimeout(timer);
@@ -170,69 +175,72 @@ export default function Roulette({
     };
   }, [isSpinning, winnerRecipe, onSpinEnd]);
 
-  const getDifficultyBadge = (difficulty: string) => {
+  const getRarityColor = (difficulty?: string) => {
     switch (difficulty?.toLowerCase()) {
       case 'easy':
-        return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+        return 'var(--r1)';
       case 'hard':
-        return 'bg-rose-500/20 text-rose-400 border-rose-500/30';
+        return 'var(--r4)';
       default:
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+        return 'var(--r2)';
     }
   };
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto my-6">
-      {/* Sound toggle */}
+    <div className="w-full my-4">
+      {/* Sound toggle button */}
       <div className="flex justify-end mb-2">
         <button
           type="button"
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className="text-xs text-neutral-400 hover:text-white px-2.5 py-1 rounded bg-neutral-900 border border-neutral-800 flex items-center gap-1.5 transition-colors"
+          className="text-xs text-[var(--muted)] hover:text-[var(--text)] transition-colors cursor-pointer"
         >
-          <span>{soundEnabled ? '🔊 Âm thanh: Bật' : '🔇 Âm thanh: Tắt'}</span>
+          {soundEnabled ? '🔊 Âm thanh: Bật' : '🔇 Âm thanh: Tắt'}
         </button>
       </div>
 
-      {/* Main Roulette Box */}
+      {/* Roulette Viewport */}
       <div
         ref={containerRef}
-        className="relative h-64 w-full bg-neutral-950/90 rounded-2xl border-2 border-neutral-800 shadow-2xl overflow-hidden backdrop-blur-xl"
+        className="relative h-[176px] w-full bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] overflow-hidden"
       >
-        {/* Edge Vignette & Blur Overlays */}
-        <div className="absolute top-0 left-0 bottom-0 w-24 sm:w-36 bg-gradient-to-r from-neutral-950 via-neutral-950/80 to-transparent z-20 pointer-events-none" />
-        <div className="absolute top-0 right-0 bottom-0 w-24 sm:w-36 bg-gradient-to-l from-neutral-950 via-neutral-950/80 to-transparent z-20 pointer-events-none" />
+        {/* Vignette gradients to conceal frame edges */}
+        <div className="absolute top-0 left-0 bottom-0 w-24 sm:w-36 bg-gradient-to-r from-[var(--panel)] via-[var(--panel)]/80 to-transparent z-20 pointer-events-none" />
+        <div className="absolute top-0 right-0 bottom-0 w-24 sm:w-36 bg-gradient-to-l from-[var(--panel)] via-[var(--panel)]/80 to-transparent z-20 pointer-events-none" />
 
-        {/* Center Indicator (CS2 Pointer) */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center h-full justify-between py-1">
-          {/* Top Marker */}
-          <div className="w-0 h-0 border-l-[9px] border-l-transparent border-r-[9px] border-r-transparent border-t-[12px] border-t-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
-          {/* Glowing Line */}
-          <div className="w-0.5 h-[calc(100%-24px)] bg-gradient-to-b from-amber-400 via-amber-300 to-amber-400 shadow-[0_0_10px_#fbbf24]" />
-          {/* Bottom Marker */}
-          <div className="w-0 h-0 border-l-[9px] border-l-transparent border-r-[9px] border-r-transparent border-b-[12px] border-b-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" />
-        </div>
+        {/* Center Target Indicator: 2px line in --text */}
+        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-[var(--text)] z-30 pointer-events-none" />
 
-        {/* Moving Strip */}
+        {/* Moving Card Strip */}
         <div
           ref={stripRef}
-          className="flex items-center h-full gap-3 px-4 will-change-transform"
-          style={{ width: `${TOTAL_ROULETTE_ITEMS * CARD_FULL_WIDTH}px` }}
+          className="flex items-center h-full px-4 will-change-transform"
+          style={{
+            gap: `${ITEM_GAP}px`,
+            width: `${TOTAL_ROULETTE_ITEMS * CARD_FULL_WIDTH}px`,
+          }}
         >
           {rouletteList.map((item, index) => {
-            const isTarget = index === WINNER_INDEX && !isSpinning && winnerRecipe;
+            const isWinnerCard = index === WINNER_INDEX && !isSpinning && winnerRecipe;
+            const rarity = getRarityColor(item.difficulty);
+
             return (
               <div
                 key={`${item.recipeId}-${index}`}
-                style={{ width: `${ITEM_WIDTH}px` }}
-                className={`flex-shrink-0 h-52 rounded-xl border p-3 flex flex-col justify-between transition-all duration-300 ${
-                  isTarget
-                    ? 'border-amber-400 bg-amber-500/10 shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-105'
-                    : 'border-neutral-800 bg-neutral-900/60'
+                style={{
+                  width: `${ITEM_WIDTH}px`,
+                  height: '148px',
+                  borderBottomColor: rarity,
+                  borderBottomWidth: '4px',
+                  borderColor: isWinnerCard ? rarity : undefined,
+                  borderWidth: isWinnerCard ? '2px' : undefined,
+                }}
+                className={`flex-shrink-0 bg-[var(--bg)] border border-[var(--line)] rounded-[var(--radius)] p-2 flex flex-col justify-between transition-all duration-300 ${
+                  isWinnerCard ? 'animate-winner-pulse' : ''
                 }`}
               >
-                {/* Item Thumbnail */}
-                <div className="relative w-full h-28 rounded-lg overflow-hidden bg-neutral-950 border border-neutral-800">
+                {/* Dish image / plate */}
+                <div className="relative w-full h-[82px] rounded-[2px] overflow-hidden bg-[var(--panel)]">
                   {item.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -241,46 +249,29 @@ export default function Roulette({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl">
-                      🍲
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full border border-[var(--line)] bg-[var(--bg)] flex items-center justify-center text-[var(--muted)] text-xs">
+                        đĩa
+                      </div>
                     </div>
                   )}
-
-                  {/* Difficulty Tag */}
-                  <div
-                    className={`absolute bottom-1 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${getDifficultyBadge(
-                      item.difficulty
-                    )}`}
-                  >
-                    {item.difficulty}
-                  </div>
                 </div>
 
-                {/* Item Info */}
+                {/* Info */}
                 <div className="mt-1">
-                  <h4 className="text-xs font-bold text-white truncate" title={item.name}>
+                  <h4
+                    className="text-[13px] font-medium text-[var(--text)] truncate leading-tight"
+                    title={item.name}
+                  >
                     {item.name}
                   </h4>
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-neutral-400">
-                    <span>⏱ {item.cookingTimeMinutes}m</span>
-                    {item.estimatedCost && (
-                      <span className="text-amber-300/90 font-mono">
-                        {item.estimatedCost.toLocaleString('vi-VN')}đ
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-[11px] text-[var(--muted)] mt-0.5 truncate">
+                    {item.cookingTimeMinutes} phút
+                    {item.estimatedCost
+                      ? `, ${Math.round(item.estimatedCost / 1000)}k`
+                      : ''}
+                  </p>
                 </div>
-
-                {/* Bottom colored bar indicating rarity style */}
-                <div
-                  className={`w-full h-1 rounded-full ${
-                    item.difficulty === 'Hard'
-                      ? 'bg-rose-500'
-                      : item.difficulty === 'Easy'
-                      ? 'bg-emerald-500'
-                      : 'bg-amber-500'
-                  }`}
-                />
               </div>
             );
           })}

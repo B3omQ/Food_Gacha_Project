@@ -3,107 +3,160 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
-import { RecipeSummary } from '@/types/recipe';
+import { OpenCaseResult } from '@/types/case';
 
 interface OpeningResultProps {
-  recipe: RecipeSummary;
+  result: OpenCaseResult;
   onReset: () => void;
 }
 
-export default function OpeningResult({ recipe, onReset }: OpeningResultProps) {
+export default function OpeningResult({ result, onReset }: OpeningResultProps) {
+  const { recipe, missingIngredients, availableIngredients, isCookableNow } = result;
+
   useEffect(() => {
-    // Fire celebratory confetti!
+    // Fire celebratory confetti when revealed!
     try {
       confetti({
-        particleCount: 100,
-        spread: 70,
+        particleCount: 85,
+        spread: 65,
         origin: { y: 0.6 },
-        colors: ['#fbbf24', '#f97316', '#38bdf8', '#4ade80'],
+        colors: ['#e4ae39', '#4b69ff', '#8847ff', '#eb4b4b'],
       });
     } catch {
-      // Confetti error fallback
+      // Confetti fallback
     }
   }, []);
 
+  const getRarityColor = (difficulty?: string) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'easy':
+        return 'var(--r1)';
+      case 'hard':
+        return 'var(--r4)';
+      default:
+        return 'var(--r2)';
+    }
+  };
+
+  const rarityColor = getRarityColor(recipe.difficulty);
+
   return (
-    <div className="relative my-8 p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-950 border-2 border-amber-500/50 shadow-2xl shadow-amber-500/10 max-w-2xl mx-auto overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-      {/* Golden halo light in background */}
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Header Badge */}
-      <div className="text-center mb-6">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-widest bg-amber-500/20 text-amber-300 border border-amber-500/40">
-          <span>✨</span> Món Ăn Đã Mở Được!
-        </span>
-        <h2 className="mt-3 text-2xl sm:text-3xl font-extrabold text-white">
-          {recipe.name}
-        </h2>
-      </div>
-
-      {/* Card Content */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+    <div
+      style={{ borderBottomColor: rarityColor, borderBottomWidth: '4px' }}
+      className="w-full bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5 sm:p-6 my-6 text-left animate-case-reveal"
+    >
+      <div className="flex flex-col md:flex-row gap-6 items-start">
         {/* Dish Image */}
-        <div className="relative h-56 rounded-2xl overflow-hidden border border-neutral-800 shadow-xl group">
+        <div className="w-full md:w-64 h-48 flex-shrink-0 bg-[var(--bg)] border border-[var(--line)] rounded-[var(--radius)] overflow-hidden">
           {recipe.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={recipe.imageUrl}
               alt={recipe.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-neutral-900 text-6xl">
-              🥘
+            <div className="w-full h-full flex items-center justify-center text-[var(--muted)] text-sm">
+              <div className="w-16 h-16 rounded-full border border-[var(--line)] flex items-center justify-center">
+                đĩa
+              </div>
             </div>
           )}
         </div>
 
-        {/* Stats & Description */}
-        <div className="flex flex-col justify-between h-full space-y-4">
-          <p className="text-sm text-neutral-300 line-clamp-3 leading-relaxed">
-            {recipe.description}
-          </p>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800">
-              <span className="text-neutral-500 block mb-0.5">Thời gian</span>
-              <span className="font-bold text-white text-sm">
-                ⏱ {recipe.cookingTimeMinutes} phút
-              </span>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800">
-              <span className="text-neutral-500 block mb-0.5">Chi phí ước tính</span>
-              <span className="font-bold text-amber-400 text-sm font-mono">
-                {recipe.estimatedCost ? `${recipe.estimatedCost.toLocaleString('vi-VN')}đ` : 'Bình dân'}
-              </span>
-            </div>
-
-            <div className="col-span-2 p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800 flex items-center justify-between">
-              <span className="text-neutral-500">Độ khó</span>
-              <span className="font-bold text-blue-400">
-                {recipe.difficulty}
-              </span>
-            </div>
+        {/* Content & Metadata */}
+        <div className="flex-1 space-y-3">
+          <div className="space-y-1">
+            <span className="text-xs text-[var(--muted)]">Kết quả mở hòm</span>
+            <h2 className="text-2xl sm:text-3xl font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)] tracking-tight">
+              {recipe.name}
+            </h2>
+            <p className="text-sm text-[var(--muted)] max-w-[52ch]">
+              {recipe.description}
+            </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="pt-2 flex flex-col sm:flex-row gap-3">
+          <div className="text-sm text-[var(--text)] pt-1">
+            <span>{recipe.cookingTimeMinutes} phút</span>
+            {recipe.estimatedCost && (
+              <span>, khoảng {Math.round(recipe.estimatedCost / 1000)}k</span>
+            )}
+          </div>
+
+          {/* Action links */}
+          <div className="pt-2 flex items-center gap-4">
             <Link
               href={`/recipes/${recipe.id}`}
-              className="flex-1 text-center py-2.5 px-4 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-lg shadow-amber-500/25 transition-all"
+              className="btn-gold inline-flex items-center text-sm font-semibold"
             >
-              Xem Cách Nấu 📖
+              Xem công thức
             </Link>
             <button
               type="button"
               onClick={onReset}
-              className="py-2.5 px-4 rounded-xl text-sm font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 transition-all"
+              className="btn-secondary text-sm font-medium cursor-pointer"
             >
-              Mở Tiếp 🎲
+              Đóng kết quả
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Fridge comparison */}
+      <div className="mt-6 pt-5 border-t border-[var(--line)]">
+        {isCookableNow ? (
+          <p className="text-sm text-[var(--text)] font-medium">
+            ✓ Đủ nguyên liệu trong tủ lạnh để nấu ngay.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-[var(--text)] font-medium">
+              Nguyên liệu cho món này:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Missing ingredients */}
+              <div className="border border-[var(--line)] bg-[var(--bg)] p-3 rounded-[var(--radius)]">
+                <span className="text-xs text-[var(--muted)] font-medium block mb-2">
+                  Cần mua thêm ({missingIngredients.length})
+                </span>
+                <ul className="space-y-1 text-sm text-[var(--text)]">
+                  {missingIngredients.map((item, idx) => (
+                    <li key={idx} className="flex justify-between items-center py-0.5">
+                      <span>• {item.name}</span>
+                      <span className="text-xs text-[var(--muted)]">
+                        {item.quantity} {item.unit}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Available ingredients */}
+              <div className="border border-[var(--line)] bg-[var(--bg)] p-3 rounded-[var(--radius)]">
+                <span className="text-xs text-[var(--muted)] font-medium block mb-2">
+                  Đã có trong tủ ({availableIngredients.length})
+                </span>
+                {availableIngredients.length === 0 ? (
+                  <p className="text-xs text-[var(--muted)] italic">
+                    Chưa có nguyên liệu nào trong tủ lạnh.
+                  </p>
+                ) : (
+                  <ul className="space-y-1 text-sm text-[var(--text)]">
+                    {availableIngredients.map((item, idx) => (
+                      <li key={idx} className="flex justify-between items-center py-0.5">
+                        <span className="font-medium">✓ {item.name}</span>
+                        <span className="text-xs text-[var(--muted)]">
+                          {item.quantity} {item.unit}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
