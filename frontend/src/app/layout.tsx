@@ -34,7 +34,7 @@ export default function RootLayout({
         <Suspense fallback={<div className="h-[56px] border-b border-[var(--line)] bg-[var(--bg)]" />}>
           <Navbar />
         </Suspense>
-        <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
+        <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8">
           {children}
         </main>
         <footer className="border-t border-[var(--line)] py-6 text-center text-xs text-[var(--muted)]">

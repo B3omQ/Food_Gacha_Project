@@ -382,18 +382,18 @@ export default function FridgePage() {
             Tủ lạnh của bạn đang trống. Hãy thêm nguyên liệu từ danh sách phía trên.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             {fridgeItems.map((item, idx) => {
               const isEditing = editingItemName === item.name;
 
               return (
                 <div
                   key={`${item.name}-${idx}`}
-                  className="p-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] flex flex-col justify-between"
+                  className="p-2 sm:p-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] flex flex-col justify-between"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-start justify-between gap-1.5 mb-1.5 sm:mb-2">
                     <span
-                      className="font-medium text-sm text-[var(--text)] truncate"
+                      className="font-medium text-xs sm:text-sm text-[var(--text)] truncate"
                       title={item.name}
                     >
                       {item.name}
@@ -401,7 +401,7 @@ export default function FridgePage() {
                     <button
                       type="button"
                       onClick={() => handleRemove(item.name)}
-                      className="text-[var(--muted)] hover:text-[var(--r4)] text-xs cursor-pointer"
+                      className="text-[var(--muted)] hover:text-[var(--r4)] text-xs cursor-pointer shrink-0"
                       title="Bỏ khỏi tủ"
                     >
                       ✕

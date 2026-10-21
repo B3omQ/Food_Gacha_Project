@@ -84,17 +84,17 @@ export default function OpeningResult({ result, onReset }: OpeningResultProps) {
           </div>
 
           {/* Action links */}
-          <div className="pt-2 flex items-center gap-4">
+          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4">
             <Link
               href={`/recipes/${recipe.id}`}
-              className="btn-gold inline-flex items-center text-sm font-semibold"
+              className="btn-gold inline-flex items-center justify-center text-sm font-semibold w-full sm:w-auto"
             >
               Xem công thức
             </Link>
             <button
               type="button"
               onClick={onReset}
-              className="btn-secondary text-sm font-medium cursor-pointer"
+              className="btn-secondary text-sm font-medium cursor-pointer w-full sm:w-auto text-center"
             >
               Đóng kết quả
             </button>

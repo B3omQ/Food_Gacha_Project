@@ -28,17 +28,17 @@ export default function Navbar() {
 
   return (
     <header className="h-[56px] border-b border-[var(--line)] bg-[var(--bg)] sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
+      <div className="max-w-5xl mx-auto px-3 sm:px-6 h-full flex items-center justify-between gap-2">
         {/* Logo */}
         <Link
           href="/"
-          className="font-heading font-bold text-[22px] tracking-wide text-[var(--text)] hover:text-white transition-colors"
+          className="font-heading font-bold text-base sm:text-[22px] tracking-wide text-[var(--text)] hover:text-white transition-colors shrink-0"
         >
           Food Case Opener
         </Link>
 
         {/* Navigation */}
-        <nav className="flex items-center gap-4 sm:gap-6 text-[15px]">
+        <nav className="flex items-center gap-1 sm:gap-5 text-xs sm:text-[15px] overflow-x-auto no-scrollbar">
           {navLinks.map((link) => {
             const isActive =
               link.href === '/'
@@ -49,10 +49,10 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative py-3.5 transition-colors ${
+                className={`relative py-2 sm:py-3.5 px-1.5 sm:px-0 whitespace-nowrap transition-colors shrink-0 ${
                   isActive
-                    ? 'text-[var(--text)] font-medium after:content-[""] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[var(--gold)]'
-                    : 'text-[var(--muted)] hover:text-[var(--text)] hidden sm:inline-block'
+                    ? 'text-[var(--text)] font-semibold after:content-[""] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[var(--gold)]'
+                    : 'text-[var(--muted)] hover:text-[var(--text)]'
                 }`}
               >
                 {link.label}
@@ -63,9 +63,9 @@ export default function Navbar() {
           {/* Fridge Link */}
           <Link
             href="/fridge"
-            className={`relative py-3.5 transition-colors flex items-center gap-1.5 ${
+            className={`relative py-2 sm:py-3.5 px-1.5 sm:px-0 whitespace-nowrap transition-colors shrink-0 flex items-center gap-1 ${
               pathname === '/fridge'
-                ? 'text-[var(--text)] font-medium after:content-[""] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[var(--gold)]'
+                ? 'text-[var(--text)] font-semibold after:content-[""] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[var(--gold)]'
                 : 'text-[var(--muted)] hover:text-[var(--text)]'
             }`}
           >

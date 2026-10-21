@@ -10,6 +10,8 @@ import { fridgeStorage } from '@/lib/fridge-storage';
 import { CaseDetail, OpenCaseRequest, OpenCaseResult } from '@/types/case';
 import { RecipeSummary } from '@/types/recipe';
 import { FridgeItem } from '@/types/fridge';
+import LastRollBanner from '@/components/case-opening/LastRollBanner';
+import { CachedRoll, lastRollStorage } from '@/lib/last-roll-storage';
 
 export default function CaseDetailPage({
   params,
@@ -127,7 +129,33 @@ export default function CaseDetailPage({
     setIsSpinning(false);
     if (openCount === 3) {
       setShowMultiModal(true);
+      if (openResults.length > 0 && caseDetail) {
+        lastRollStorage.saveLastRoll({
+          mode: 'multi',
+          timestamp: Date.now(),
+          caseNames: [caseDetail.name, caseDetail.name, caseDetail.name],
+          results: openResults,
+        });
+      }
     } else {
+      setShowResult(true);
+      if (openResult && caseDetail) {
+        lastRollStorage.saveLastRoll({
+          mode: 'single',
+          timestamp: Date.now(),
+          caseNames: [caseDetail.name],
+          results: [openResult],
+        });
+      }
+    }
+  };
+
+  const handleViewCachedRoll = (roll: CachedRoll) => {
+    if (roll.mode === 'multi') {
+      setOpenResults(roll.results);
+      setShowMultiModal(true);
+    } else {
+      setOpenResult(roll.results[0]);
       setShowResult(true);
     }
   };
@@ -194,6 +222,9 @@ export default function CaseDetailPage({
         </p>
       </div>
 
+      {/* Banner Bản lưu lượt mở trước (chỉ lưu 1 lần gần nhất) */}
+      <LastRollBanner onViewRoll={handleViewCachedRoll} />
+
       {/* Roulette (1 làn hoặc 3 làn quay cùng lúc) */}
       <Roulette
         items={roulettePool}
@@ -205,9 +236,9 @@ export default function CaseDetailPage({
       />
 
       {/* Action Row & Setting Mở 1 hoặc 3 hòm */}
-      <div className="flex flex-wrap items-center gap-3 pt-1">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
         {/* Bộ chọn số lượng mở: 1x hoặc 3x */}
-        <div className="flex items-center gap-1 p-1 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)]">
+        <div className="grid grid-cols-2 gap-1 p-1 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] w-full sm:w-auto shrink-0">
           <button
             type="button"
             disabled={isSpinning || isRequesting}
@@ -215,13 +246,14 @@ export default function CaseDetailPage({
               setOpenCount(1);
               handleReset();
             }}
-            className={`px-3 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1 text-center ${
               openCount === 1
                 ? 'bg-[var(--gold)] text-black shadow'
                 : 'text-[var(--muted)] hover:text-[var(--text)]'
             }`}
           >
-            1x Mở 1 hòm
+            <span>📦</span>
+            <span>Mở 1 hòm</span>
           </button>
           <button
             type="button"
@@ -230,14 +262,14 @@ export default function CaseDetailPage({
               setOpenCount(3);
               handleReset();
             }}
-            className={`px-3 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1 text-center ${
               openCount === 3
                 ? 'bg-[var(--gold)] text-black shadow'
                 : 'text-[var(--muted)] hover:text-[var(--text)]'
             }`}
           >
             <span>⚡</span>
-            <span>3x Mở 3 hòm (3 làn)</span>
+            <span>Mở 3 hòm</span>
           </button>
         </div>
 
@@ -246,7 +278,7 @@ export default function CaseDetailPage({
           type="button"
           onClick={handleOpenCase}
           disabled={isRequesting || isSpinning}
-          className="btn-gold disabled:opacity-50 cursor-pointer flex items-center gap-1.5 py-2 px-5"
+          className="btn-gold disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 py-2.5 px-5 w-full sm:w-auto font-semibold"
         >
           <span>🎲</span>
           <span>
@@ -260,12 +292,12 @@ export default function CaseDetailPage({
           </span>
         </button>
 
-        <label className="flex items-center gap-2 text-xs sm:text-sm text-[var(--muted)] cursor-pointer select-none ml-auto sm:ml-0">
+        <label className="flex items-center gap-2 text-xs sm:text-sm text-[var(--muted)] cursor-pointer select-none">
           <input
             type="checkbox"
             checked={onlyCookableMode}
             onChange={(e) => setOnlyCookableMode(e.target.checked)}
-            className="w-4 h-4 rounded-[var(--radius)] bg-[var(--panel)] border-[var(--line)]"
+            className="w-4 h-4 rounded-[var(--radius)] bg-[var(--panel)] border-[var(--line)] shrink-0"
           />
           <span>Chỉ quay món nấu được từ tủ lạnh ({cookableDishes.length}/{caseDetail.recipes.length})</span>
         </label>
@@ -305,12 +337,7 @@ export default function CaseDetailPage({
           </span>
         </div>
 
-        <div
-          className="grid gap-2"
-          style={{
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-          }}
-        >
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-2.5">
           {caseDetail.recipes.map((recipe) => {
             const rarityColor = getRarityColor(recipe.difficulty);
             const cookable = isRecipeCookable(recipe.ingredients);
@@ -323,7 +350,7 @@ export default function CaseDetailPage({
                   borderBottomColor: rarityColor,
                   borderBottomWidth: '4px',
                 }}
-                className="bg-[var(--panel)] border border-[var(--line)] hover:border-[var(--muted)] rounded-[var(--radius)] p-2.5 flex flex-col justify-between transition-colors"
+                className="bg-[var(--panel)] border border-[var(--line)] hover:border-[var(--muted)] rounded-[var(--radius)] p-2 sm:p-2.5 flex flex-col justify-between transition-colors"
               >
                 <div className="aspect-[4/3] w-full bg-[var(--bg)] rounded-[2px] overflow-hidden mb-2">
                   {recipe.imageUrl ? (
@@ -341,17 +368,17 @@ export default function CaseDetailPage({
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold text-[var(--text)] truncate leading-tight">
+                  <h3 className="text-xs sm:text-sm font-semibold text-[var(--text)] truncate leading-tight">
                     {recipe.name}
                   </h3>
-                  <p className="text-xs text-[var(--muted)] mt-1 truncate">
+                  <p className="text-[11px] sm:text-xs text-[var(--muted)] mt-1 truncate">
                     {recipe.cookingTimeMinutes} phút
                     {recipe.estimatedCost
                       ? `, ${Math.round(recipe.estimatedCost / 1000)}k`
                       : ''}
                   </p>
                   {cookable && (
-                    <span className="text-[11px] text-[var(--text)] mt-1 block">
+                    <span className="text-[10px] sm:text-[11px] text-[var(--gold)] mt-1 block font-medium truncate">
                       ✓ Nấu được ngay
                     </span>
                   )}

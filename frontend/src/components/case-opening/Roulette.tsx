@@ -314,8 +314,8 @@ function SingleRouletteLane({
         className={`relative ${laneHeightClass} w-full bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] overflow-hidden shadow-inner`}
       >
         {/* Vignette gradients to conceal frame edges */}
-        <div className="absolute top-0 left-0 bottom-0 w-20 sm:w-32 bg-gradient-to-r from-[var(--panel)] via-[var(--panel)]/70 to-transparent z-20 pointer-events-none" />
-        <div className="absolute top-0 right-0 bottom-0 w-20 sm:w-32 bg-gradient-to-l from-[var(--panel)] via-[var(--panel)]/70 to-transparent z-20 pointer-events-none" />
+        <div className="absolute top-0 left-0 bottom-0 w-10 sm:w-28 bg-gradient-to-r from-[var(--panel)] via-[var(--panel)]/70 to-transparent z-20 pointer-events-none" />
+        <div className="absolute top-0 right-0 bottom-0 w-10 sm:w-28 bg-gradient-to-l from-[var(--panel)] via-[var(--panel)]/70 to-transparent z-20 pointer-events-none" />
 
         {/* Center Target Needle: CS-style indicator with top and bottom arrows */}
         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] bg-[var(--gold)] z-30 pointer-events-none">

@@ -104,3 +104,11 @@ h1, h2, h3, .font-heading {
 .btn-secondary:hover {
   border-color: var(--muted);
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

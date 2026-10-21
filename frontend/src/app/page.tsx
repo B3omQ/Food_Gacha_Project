@@ -11,6 +11,8 @@ import { fridgeStorage } from '@/lib/fridge-storage';
 import { CaseSummary, CaseDetail, OpenCaseRequest, OpenCaseResult, CaseRecipeItem } from '@/types/case';
 import { RecipeSummary } from '@/types/recipe';
 import { FridgeItem } from '@/types/fridge';
+import LastRollBanner from '@/components/case-opening/LastRollBanner';
+import { CachedRoll, lastRollStorage } from '@/lib/last-roll-storage';
 
 export default function HomePage() {
   return (
@@ -235,7 +237,33 @@ function HomeContent() {
     setIsSpinning(false);
     if (openMode === 'multi') {
       setShowMultiModal(true);
+      if (multiResults.length > 0) {
+        lastRollStorage.saveLastRoll({
+          mode: 'multi',
+          timestamp: Date.now(),
+          caseNames: multiCaseNames,
+          results: multiResults,
+        });
+      }
     } else {
+      setShowSingleResult(true);
+      if (openResult) {
+        lastRollStorage.saveLastRoll({
+          mode: 'single',
+          timestamp: Date.now(),
+          caseNames: [currentSingleCase?.name || 'Hòm'],
+          results: [openResult],
+        });
+      }
+    }
+  };
+
+  const handleViewCachedRoll = (roll: CachedRoll) => {
+    if (roll.mode === 'multi') {
+      setMultiResults(roll.results);
+      setShowMultiModal(true);
+    } else {
+      setOpenResult(roll.results[0]);
       setShowSingleResult(true);
     }
   };
@@ -292,7 +320,7 @@ function HomeContent() {
           </h2>
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 bg-[var(--bg)] border border-[var(--line)] rounded-[var(--radius)] shrink-0">
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-[var(--bg)] border border-[var(--line)] rounded-[var(--radius)] w-full sm:w-auto shrink-0">
           <button
             type="button"
             disabled={isSpinning || isRequesting}
@@ -300,13 +328,14 @@ function HomeContent() {
               setOpenMode('single');
               handleReset();
             }}
-            className={`px-3.5 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-all cursor-pointer ${
+            className={`px-3 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 text-center ${
               openMode === 'single'
                 ? 'bg-[var(--panel)] text-[var(--text)] border border-[var(--muted)] shadow'
                 : 'text-[var(--muted)] hover:text-[var(--text)]'
             }`}
           >
-            📦 Mở 1 hòm
+            <span>📦</span>
+            <span>Mở 1 hòm</span>
           </button>
           <button
             type="button"
@@ -315,23 +344,26 @@ function HomeContent() {
               setOpenMode('multi');
               handleReset();
             }}
-            className={`px-3.5 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 text-center ${
               openMode === 'multi'
                 ? 'bg-[var(--gold)] text-black font-bold shadow'
                 : 'text-[var(--gold)] hover:text-white'
             }`}
           >
             <span>⚡</span>
-            <span>Mở 3 hòm cùng lúc</span>
+            <span>Mở 3 hòm</span>
           </button>
         </div>
       </div>
+
+      {/* Banner Bản lưu lượt mở trước (chỉ lưu 1 lần gần nhất) */}
+      <LastRollBanner onViewRoll={handleViewCachedRoll} />
 
       {/* ================= 2. CHẾ ĐỘ 1 HÒM (SINGLE) ================= */}
       {openMode === 'single' && (
         <div className="space-y-6 animate-fade-in">
           {/* Tabs chọn hòm */}
-          <div className="flex flex-wrap gap-2 border-b border-[var(--line)] pb-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-[var(--line)] pb-3">
             {cases.map((c) => {
               const isSelected = c.id === selectedCaseId;
               return (
@@ -339,7 +371,7 @@ function HomeContent() {
                   key={c.id}
                   type="button"
                   onClick={() => setSelectedCaseId(c.id)}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-[var(--radius)] transition-colors cursor-pointer border ${
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-[var(--radius)] transition-colors cursor-pointer border whitespace-nowrap shrink-0 ${
                     isSelected
                       ? 'bg-[var(--panel)] text-[var(--text)] border-[var(--muted)] font-medium'
                       : 'bg-transparent text-[var(--muted)] border-[var(--line)] hover:text-[var(--text)]'
@@ -485,12 +517,12 @@ function HomeContent() {
       )}
 
       {/* ================= 4. ACTION ROW DÙNG CHUNG ================= */}
-      <div className="flex flex-wrap items-center gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
         <button
           type="button"
           onClick={handleOpen}
           disabled={isRequesting || isSpinning || loadingSingleDetail || loadingMultiDetail}
-          className="btn-gold disabled:opacity-50 cursor-pointer flex items-center gap-2 py-2 px-6 font-semibold"
+          className="btn-gold disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 py-2.5 px-6 font-semibold w-full sm:w-auto"
         >
           <span>🎲</span>
           <span>
@@ -510,7 +542,7 @@ function HomeContent() {
             type="checkbox"
             checked={onlyCookableMode}
             onChange={(e) => setOnlyCookableMode(e.target.checked)}
-            className="w-4 h-4 rounded-[var(--radius)] bg-[var(--panel)] border-[var(--line)]"
+            className="w-4 h-4 rounded-[var(--radius)] bg-[var(--panel)] border-[var(--line)] shrink-0"
           />
           <span>Chỉ quay món nấu được từ tủ lạnh ({fridgeItems.length} đồ có sẵn)</span>
         </label>
@@ -552,12 +584,7 @@ function HomeContent() {
             </span>
           </div>
 
-          <div
-            className="grid gap-2"
-            style={{
-              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-            }}
-          >
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-2.5">
             {currentSingleCase.recipes.map((recipe) => {
               const rarityColor = getRarityColor(recipe.difficulty);
               const cookable = isRecipeCookable(recipe.ingredients);
@@ -570,7 +597,7 @@ function HomeContent() {
                     borderBottomColor: rarityColor,
                     borderBottomWidth: '4px',
                   }}
-                  className="bg-[var(--panel)] border border-[var(--line)] hover:border-[var(--muted)] rounded-[var(--radius)] p-2.5 flex flex-col justify-between transition-colors"
+                  className="bg-[var(--panel)] border border-[var(--line)] hover:border-[var(--muted)] rounded-[var(--radius)] p-2 sm:p-2.5 flex flex-col justify-between transition-colors"
                 >
                   <div className="aspect-[4/3] w-full bg-[var(--bg)] rounded-[2px] overflow-hidden mb-2">
                     {recipe.imageUrl ? (
@@ -588,17 +615,17 @@ function HomeContent() {
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-semibold text-[var(--text)] truncate leading-tight">
+                    <h3 className="text-xs sm:text-sm font-semibold text-[var(--text)] truncate leading-tight">
                       {recipe.name}
                     </h3>
-                    <p className="text-xs text-[var(--muted)] mt-1 truncate">
+                    <p className="text-[11px] sm:text-xs text-[var(--muted)] mt-1 truncate">
                       {recipe.cookingTimeMinutes} phút
                       {recipe.estimatedCost
                         ? `, ${Math.round(recipe.estimatedCost / 1000)}k`
                         : ''}
                     </p>
                     {cookable && (
-                      <span className="text-[11px] text-[var(--text)] mt-1 block">
+                      <span className="text-[10px] sm:text-[11px] text-[var(--gold)] mt-1 block font-medium truncate">
                         ✓ Nấu được ngay
                       </span>
                     )}

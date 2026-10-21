@@ -75,8 +75,8 @@ export default function MultiOpeningResultModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto animate-fade-in">
-      <div className="relative w-full max-w-5xl bg-[var(--panel)] border border-[var(--gold)]/40 rounded-[var(--radius)] p-5 sm:p-7 my-6 shadow-2xl space-y-6 animate-scale-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto animate-fade-in">
+      <div className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-[var(--panel)] border border-[var(--gold)]/40 rounded-[var(--radius)] p-4 sm:p-6 my-auto shadow-2xl space-y-4 sm:space-y-6 animate-scale-up">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--line)] pb-4">
           <div className="space-y-1">

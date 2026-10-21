@@ -459,8 +459,8 @@ export default function AdminPage() {
 
       {/* ================= MODAL: CREATE / EDIT CASE ================= */}
       {editingCase && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5 sm:p-6 my-8 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 overflow-y-auto">
+          <div className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-4 sm:p-6 my-auto space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
               <h3 className="font-bold font-['Barlow_Condensed',sans-serif] text-xl text-[var(--text)]">
                 {editingCase.id ? 'Chỉnh sửa hòm' : 'Tạo hòm mới'}
@@ -644,8 +644,8 @@ export default function AdminPage() {
 
       {/* ================= MODAL: CREATE / EDIT RECIPE ================= */}
       {editingRecipe && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5 sm:p-6 my-8 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/60 overflow-y-auto">
+          <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-4 sm:p-6 my-auto space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
               <h3 className="font-bold font-['Barlow_Condensed',sans-serif] text-xl text-[var(--text)]">
                 {editingRecipe.id ? 'Chỉnh sửa món ăn' : 'Tạo món ăn mới'}
