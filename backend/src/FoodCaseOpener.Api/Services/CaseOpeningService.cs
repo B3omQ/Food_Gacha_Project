@@ -17,6 +17,14 @@ public class CaseOpeningService : ICaseOpeningService
 
     public async Task<OpenCaseResultDto> OpenCaseAsync(int caseId, OpenCaseRequestDto? request = null)
     {
+        var results = await OpenMultipleCasesAsync(caseId, 1, request);
+        return results.First();
+    }
+
+    public async Task<List<OpenCaseResultDto>> OpenMultipleCasesAsync(int caseId, int count, OpenCaseRequestDto? request = null)
+    {
+        if (count < 1) count = 1;
+
         var foodCase = await _context.FoodCases
             .Include(fc => fc.CaseRecipes)
                 .ThenInclude(cr => cr.Recipe)
@@ -74,77 +82,83 @@ public class CaseOpeningService : ICaseOpeningService
             }
         }
 
-        // Weighted Random Selection
         var totalWeight = pool.Sum(cr => cr.Weight);
-        var roll = Random.Shared.Next(0, totalWeight);
+        var results = new List<OpenCaseResultDto>();
 
-        var currentSum = 0;
-        var selectedCaseRecipe = pool.First();
-
-        foreach (var item in pool)
+        for (int i = 0; i < count; i++)
         {
-            currentSum += item.Weight;
-            if (roll < currentSum)
+            // Weighted Random Selection
+            var roll = Random.Shared.Next(0, totalWeight);
+            var currentSum = 0;
+            var selectedCaseRecipe = pool.First();
+
+            foreach (var item in pool)
             {
-                selectedCaseRecipe = item;
-                break;
+                currentSum += item.Weight;
+                if (roll < currentSum)
+                {
+                    selectedCaseRecipe = item;
+                    break;
+                }
             }
+
+            var recipe = selectedCaseRecipe.Recipe;
+            var openingId = Interlocked.Increment(ref _openingCounter);
+
+            // Tính toán các nguyên liệu đã có và còn thiếu đối với món đã trúng
+            var recipeIngredients = recipe.RecipeIngredients.ToList();
+            var availableList = new List<RecipeIngredientDto>();
+            var missingList = new List<RecipeIngredientDto>();
+
+            foreach (var ri in recipeIngredients)
+            {
+                var isAvailable = userIds.Contains(ri.IngredientId) ||
+                    (ri.Ingredient != null && userNames.Contains(ri.Ingredient.Name.Trim().ToLower()));
+
+                var itemDto = new RecipeIngredientDto
+                {
+                    IngredientId = ri.IngredientId,
+                    Name = ri.Ingredient?.Name ?? "Nguyên liệu",
+                    Quantity = ri.Quantity,
+                    Unit = ri.Ingredient?.Unit ?? "phần"
+                };
+
+                if (isAvailable)
+                {
+                    availableList.Add(itemDto);
+                }
+                else
+                {
+                    missingList.Add(itemDto);
+                }
+            }
+
+            var isCookable = recipeIngredients.Count == 0 || missingList.Count == 0;
+            var matchPercentage = recipeIngredients.Count > 0
+                ? Math.Round((double)availableList.Count / recipeIngredients.Count * 100, 1)
+                : 100.0;
+
+            results.Add(new OpenCaseResultDto
+            {
+                OpeningId = openingId,
+                CaseId = foodCase.Id,
+                Recipe = new RecipeSummaryDto
+                {
+                    Id = recipe.Id,
+                    Name = recipe.Name,
+                    Description = recipe.Description,
+                    ImageUrl = recipe.ImageUrl,
+                    CookingTimeMinutes = recipe.CookingTimeMinutes,
+                    EstimatedCost = recipe.EstimatedCost,
+                    Difficulty = recipe.Difficulty
+                },
+                AvailableIngredients = availableList,
+                MissingIngredients = missingList,
+                IsCookableNow = isCookable,
+                MatchPercentage = matchPercentage
+            });
         }
 
-        var recipe = selectedCaseRecipe.Recipe;
-        var openingId = Interlocked.Increment(ref _openingCounter);
-
-        // Tính toán các nguyên liệu đã có và còn thiếu đối với món đã trúng
-        var recipeIngredients = recipe.RecipeIngredients.ToList();
-        var availableList = new List<RecipeIngredientDto>();
-        var missingList = new List<RecipeIngredientDto>();
-
-        foreach (var ri in recipeIngredients)
-        {
-            var isAvailable = userIds.Contains(ri.IngredientId) ||
-                (ri.Ingredient != null && userNames.Contains(ri.Ingredient.Name.Trim().ToLower()));
-
-            var itemDto = new RecipeIngredientDto
-            {
-                IngredientId = ri.IngredientId,
-                Name = ri.Ingredient?.Name ?? "Nguyên liệu",
-                Quantity = ri.Quantity,
-                Unit = ri.Ingredient?.Unit ?? "phần"
-            };
-
-            if (isAvailable)
-            {
-                availableList.Add(itemDto);
-            }
-            else
-            {
-                missingList.Add(itemDto);
-            }
-        }
-
-        var isCookable = recipeIngredients.Count == 0 || missingList.Count == 0;
-        var matchPercentage = recipeIngredients.Count > 0
-            ? Math.Round((double)availableList.Count / recipeIngredients.Count * 100, 1)
-            : 100.0;
-
-        return new OpenCaseResultDto
-        {
-            OpeningId = openingId,
-            CaseId = foodCase.Id,
-            Recipe = new RecipeSummaryDto
-            {
-                Id = recipe.Id,
-                Name = recipe.Name,
-                Description = recipe.Description,
-                ImageUrl = recipe.ImageUrl,
-                CookingTimeMinutes = recipe.CookingTimeMinutes,
-                EstimatedCost = recipe.EstimatedCost,
-                Difficulty = recipe.Difficulty
-            },
-            AvailableIngredients = availableList,
-            MissingIngredients = missingList,
-            IsCookableNow = isCookable,
-            MatchPercentage = matchPercentage
-        };
+        return results;
     }
 }

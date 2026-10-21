@@ -46,4 +46,11 @@ export const caseService = {
       body: request ? JSON.stringify(request) : undefined,
     });
   },
+
+  async openMultipleCases(caseId: number, count: number = 3, request?: OpenCaseRequest): Promise<OpenCaseResult[]> {
+    return apiClient<OpenCaseResult[]>(`api/cases/${caseId}/open-multiple?count=${count}`, {
+      method: 'POST',
+      body: request ? JSON.stringify(request) : undefined,
+    });
+  },
 };

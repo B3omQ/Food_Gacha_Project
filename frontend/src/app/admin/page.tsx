@@ -5,6 +5,7 @@ import { caseService } from '@/services/case-service';
 import { recipeService } from '@/services/recipe-service';
 import { CaseDetail, CaseSummary, CreateOrUpdateCaseDto } from '@/types/case';
 import { CreateOrUpdateRecipeDto, RecipeDetail, RecipeSummary } from '@/types/recipe';
+import ExcelImportModal from '@/components/ExcelImportModal';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'cases' | 'recipes'>('cases');
@@ -18,6 +19,7 @@ export default function AdminPage() {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [loadingRecipes, setLoadingRecipes] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<{ id?: number; form: CreateOrUpdateRecipeDto } | null>(null);
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
 
   // Toast / feedback message
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -363,17 +365,28 @@ export default function AdminPage() {
       {/* ================= TAB 2: RECIPES MANAGEMENT ================= */}
       {activeTab === 'recipes' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h2 className="text-lg font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)]">
               Danh sách món ăn
             </h2>
-            <button
-              type="button"
-              onClick={handleOpenCreateRecipe}
-              className="btn-gold text-xs font-semibold py-1.5 px-3 cursor-pointer"
-            >
-              Thêm món mới
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsExcelModalOpen(true)}
+                className="btn-secondary text-xs font-semibold py-1.5 px-3 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>📊</span>
+                <span>Nhập từ Excel</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenCreateRecipe}
+                className="btn-gold text-xs font-semibold py-1.5 px-3 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>+</span>
+                <span>Thêm món mới</span>
+              </button>
+            </div>
           </div>
 
           {loadingRecipes ? (
@@ -889,6 +902,19 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* ================= MODAL: IMPORT EXCEL RECIPES ================= */}
+      <ExcelImportModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
+        onSuccess={(result) => {
+          showFeedback(
+            'success',
+            `Đã nhập thành công! Thêm ${result.importedCount} món mới, cập nhật ${result.updatedCount} món.`
+          );
+          loadRecipes();
+        }}
+      />
     </div>
   );
 }

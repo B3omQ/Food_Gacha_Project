@@ -271,4 +271,34 @@ public class CasesController : ControllerBase
             return StatusCode(500, new { message = "Đã xảy ra lỗi không mong muốn trên máy chủ." });
         }
     }
+
+    /// <summary>
+    /// Mở nhiều hòm cùng lúc (ví dụ: mở 3 hòm)
+    /// </summary>
+    [HttpPost("{caseId:int}/open-multiple")]
+    public async Task<ActionResult<List<OpenCaseResultDto>>> OpenMultipleCases(
+        int caseId,
+        [FromQuery] int count = 3,
+        [FromBody] OpenCaseRequestDto? request = null)
+    {
+        try
+        {
+            count = Math.Clamp(count, 1, 10);
+            var results = await _caseOpeningService.OpenMultipleCasesAsync(caseId, count, request);
+            return Ok(results);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi xảy ra khi mở nhiều hòm {CaseId}", caseId);
+            return StatusCode(500, new { message = "Đã xảy ra lỗi không mong muốn trên máy chủ." });
+        }
+    }
 }

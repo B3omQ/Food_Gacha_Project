@@ -134,6 +134,88 @@ public class RecipesController : ControllerBase
     }
 
     /// <summary>
+    /// Nhập danh sách món ăn hàng loạt (từ Excel / CSV)
+    /// </summary>
+    [HttpPost("batch")]
+    public async Task<ActionResult<BatchImportResultDto>> BatchCreateOrUpdateRecipes([FromBody] List<CreateOrUpdateRecipeDto> dtos)
+    {
+        if (dtos == null || dtos.Count == 0)
+        {
+            return BadRequest(new { message = "Danh sách món ăn rỗng." });
+        }
+
+        var result = new BatchImportResultDto
+        {
+            TotalRows = dtos.Count
+        };
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            foreach (var dto in dtos)
+            {
+                if (string.IsNullOrWhiteSpace(dto.Name))
+                {
+                    result.FailedCount++;
+                    result.Messages.Add("Bỏ qua 1 món ăn vì không có tên.");
+                    continue;
+                }
+
+                var trimmedName = dto.Name.Trim();
+                var existing = await _context.Recipes
+                    .Include(r => r.RecipeIngredients)
+                    .FirstOrDefaultAsync(r => r.Name.ToLower() == trimmedName.ToLower());
+
+                if (existing != null)
+                {
+                    // Cập nhật thông tin nếu đã tồn tại
+                    if (!string.IsNullOrWhiteSpace(dto.Description)) existing.Description = dto.Description.Trim();
+                    if (!string.IsNullOrWhiteSpace(dto.ImageUrl)) existing.ImageUrl = dto.ImageUrl.Trim();
+                    if (dto.CookingTimeMinutes > 0) existing.CookingTimeMinutes = dto.CookingTimeMinutes;
+                    if (dto.EstimatedCost.HasValue && dto.EstimatedCost > 0) existing.EstimatedCost = dto.EstimatedCost;
+                    if (!string.IsNullOrWhiteSpace(dto.Difficulty)) existing.Difficulty = dto.Difficulty;
+                    if (!string.IsNullOrWhiteSpace(dto.Instructions)) existing.Instructions = dto.Instructions.Trim();
+
+                    if (dto.Ingredients != null && dto.Ingredients.Count > 0)
+                    {
+                        existing.RecipeIngredients.Clear();
+                        await SyncIngredientsAsync(existing, dto.Ingredients);
+                    }
+                    result.UpdatedCount++;
+                }
+                else
+                {
+                    // Tạo mới
+                    var recipe = new Recipe
+                    {
+                        Name = trimmedName,
+                        Description = dto.Description?.Trim() ?? string.Empty,
+                        ImageUrl = dto.ImageUrl?.Trim(),
+                        CookingTimeMinutes = dto.CookingTimeMinutes > 0 ? dto.CookingTimeMinutes : 20,
+                        EstimatedCost = dto.EstimatedCost ?? 30000,
+                        Difficulty = string.IsNullOrWhiteSpace(dto.Difficulty) ? "Medium" : dto.Difficulty,
+                        Instructions = dto.Instructions?.Trim() ?? string.Empty
+                    };
+
+                    await SyncIngredientsAsync(recipe, dto.Ingredients);
+                    _context.Recipes.Add(recipe);
+                    result.ImportedCount++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            return StatusCode(500, new { message = $"Lỗi khi lưu dữ liệu hàng loạt: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
     /// Cập nhật món ăn
     /// </summary>
     [HttpPut("{recipeId:int}")]

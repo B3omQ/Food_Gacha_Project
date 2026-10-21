@@ -7,6 +7,14 @@ export interface IngredientOption {
   unit: string;
 }
 
+export interface BatchImportResult {
+  totalRows: number;
+  importedCount: number;
+  updatedCount: number;
+  failedCount: number;
+  messages: string[];
+}
+
 export const recipeService = {
   async getAllRecipes(): Promise<RecipeSummary[]> {
     return apiClient<RecipeSummary[]>('api/recipes');
@@ -39,4 +47,12 @@ export const recipeService = {
   async getAllIngredients(): Promise<IngredientOption[]> {
     return apiClient<IngredientOption[]>('api/recipes/ingredients');
   },
+
+  async batchImportRecipes(recipes: CreateOrUpdateRecipeDto[]): Promise<BatchImportResult> {
+    return apiClient<BatchImportResult>('api/recipes/batch', {
+      method: 'POST',
+      body: JSON.stringify(recipes),
+    });
+  },
 };
+

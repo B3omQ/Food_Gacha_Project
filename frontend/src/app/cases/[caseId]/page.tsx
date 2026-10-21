@@ -4,6 +4,7 @@ import React, { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Roulette from '@/components/case-opening/Roulette';
 import OpeningResult from '@/components/case-opening/OpeningResult';
+import MultiOpeningResultModal from '@/components/case-opening/MultiOpeningResultModal';
 import { caseService } from '@/services/case-service';
 import { fridgeStorage } from '@/lib/fridge-storage';
 import { CaseDetail, OpenCaseRequest, OpenCaseResult } from '@/types/case';
@@ -27,11 +28,15 @@ export default function CaseDetailPage({
   const [onlyCookableMode, setOnlyCookableMode] = useState(false);
 
   // Opening states
+  const [openCount, setOpenCount] = useState<1 | 3>(3);
   const [isRequesting, setIsRequesting] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [winnerRecipe, setWinnerRecipe] = useState<RecipeSummary | null>(null);
+  const [winnerRecipes, setWinnerRecipes] = useState<RecipeSummary[]>([]);
   const [openResult, setOpenResult] = useState<OpenCaseResult | null>(null);
+  const [openResults, setOpenResults] = useState<OpenCaseResult[]>([]);
   const [showResult, setShowResult] = useState(false);
+  const [showMultiModal, setShowMultiModal] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
 
   const fetchCaseDetail = async () => {
@@ -83,6 +88,7 @@ export default function CaseDetailPage({
       setOpenError(null);
       setIsRequesting(true);
       setShowResult(false);
+      setShowMultiModal(false);
 
       const request: OpenCaseRequest = {
         availableIngredientIds: fridgeItems.filter((i) => i.id).map((i) => i.id!),
@@ -90,9 +96,22 @@ export default function CaseDetailPage({
         onlyCookableWithAvailableIngredients: onlyCookableMode,
       };
 
-      const result = await caseService.openCase(caseId, request);
-      setWinnerRecipe(result.recipe);
-      setOpenResult(result);
+      if (openCount === 3) {
+        const results = await caseService.openMultipleCases(caseId, 3, request);
+        setOpenResults(results);
+        setWinnerRecipes(results.map((r) => r.recipe));
+        if (results.length > 0) {
+          setWinnerRecipe(results[0].recipe);
+          setOpenResult(results[0]);
+        }
+      } else {
+        const result = await caseService.openCase(caseId, request);
+        setWinnerRecipe(result.recipe);
+        setWinnerRecipes([result.recipe]);
+        setOpenResult(result);
+        setOpenResults([result]);
+      }
+
       setIsRequesting(false);
       setIsSpinning(true);
     } catch (err: unknown) {
@@ -106,13 +125,20 @@ export default function CaseDetailPage({
 
   const handleSpinEnd = () => {
     setIsSpinning(false);
-    setShowResult(true);
+    if (openCount === 3) {
+      setShowMultiModal(true);
+    } else {
+      setShowResult(true);
+    }
   };
 
   const handleReset = () => {
     setShowResult(false);
+    setShowMultiModal(false);
     setWinnerRecipe(null);
+    setWinnerRecipes([]);
     setOpenResult(null);
+    setOpenResults([]);
   };
 
   const getRarityColor = (difficulty?: string) => {
@@ -168,32 +194,73 @@ export default function CaseDetailPage({
         </p>
       </div>
 
-      {/* Roulette */}
+      {/* Roulette (1 làn hoặc 3 làn quay cùng lúc) */}
       <Roulette
         items={roulettePool}
         winnerRecipe={winnerRecipe}
+        winnerRecipes={winnerRecipes}
         isSpinning={isSpinning}
+        openCount={openCount}
         onSpinEnd={handleSpinEnd}
       />
 
-      {/* Action Row */}
-      <div className="flex flex-wrap items-center gap-4 pt-1">
+      {/* Action Row & Setting Mở 1 hoặc 3 hòm */}
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        {/* Bộ chọn số lượng mở: 1x hoặc 3x */}
+        <div className="flex items-center gap-1 p-1 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)]">
+          <button
+            type="button"
+            disabled={isSpinning || isRequesting}
+            onClick={() => {
+              setOpenCount(1);
+              handleReset();
+            }}
+            className={`px-3 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-colors cursor-pointer ${
+              openCount === 1
+                ? 'bg-[var(--gold)] text-black shadow'
+                : 'text-[var(--muted)] hover:text-[var(--text)]'
+            }`}
+          >
+            1x Mở 1 hòm
+          </button>
+          <button
+            type="button"
+            disabled={isSpinning || isRequesting}
+            onClick={() => {
+              setOpenCount(3);
+              handleReset();
+            }}
+            className={`px-3 py-1.5 rounded-[var(--radius)] text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 ${
+              openCount === 3
+                ? 'bg-[var(--gold)] text-black shadow'
+                : 'text-[var(--muted)] hover:text-[var(--text)]'
+            }`}
+          >
+            <span>⚡</span>
+            <span>3x Mở 3 hòm (3 làn)</span>
+          </button>
+        </div>
+
+        {/* Nút bấm mở hòm */}
         <button
           type="button"
-          onClick={showResult ? handleReset : handleOpenCase}
+          onClick={handleOpenCase}
           disabled={isRequesting || isSpinning}
-          className="btn-gold disabled:opacity-50 cursor-pointer"
+          className="btn-gold disabled:opacity-50 cursor-pointer flex items-center gap-1.5 py-2 px-5"
         >
-          {isSpinning
-            ? 'Đang mở...'
-            : isRequesting
-            ? 'Đang chuẩn bị...'
-            : showResult
-            ? 'Mở hòm khác'
-            : 'Mở hòm'}
+          <span>🎲</span>
+          <span>
+            {isSpinning
+              ? 'Đang quay thưởng...'
+              : isRequesting
+              ? 'Đang chuẩn bị...'
+              : openCount === 3
+              ? 'Mở 3 hòm cùng lúc'
+              : 'Mở 1 hòm'}
+          </span>
         </button>
 
-        <label className="flex items-center gap-2 text-sm text-[var(--muted)] cursor-pointer select-none">
+        <label className="flex items-center gap-2 text-xs sm:text-sm text-[var(--muted)] cursor-pointer select-none ml-auto sm:ml-0">
           <input
             type="checkbox"
             checked={onlyCookableMode}
@@ -203,24 +270,29 @@ export default function CaseDetailPage({
           <span>Chỉ quay món nấu được từ tủ lạnh ({cookableDishes.length}/{caseDetail.recipes.length})</span>
         </label>
 
-        {showResult && openResult && (
-          <div className="text-sm text-[var(--text)]">
-            Hôm nay ăn <strong className="text-[var(--text)]">{openResult.recipe.name}</strong>, nấu khoảng {openResult.recipe.cookingTimeMinutes} phút
-            {openResult.recipe.estimatedCost ? `, tốn ${Math.round(openResult.recipe.estimatedCost / 1000)}k.` : '.'}
-          </div>
-        )}
-
         {openError && (
-          <div className="text-sm text-[var(--r4)]">
+          <div className="w-full text-xs sm:text-sm text-[var(--r4)] bg-red-950/30 border border-red-500/30 p-2 rounded-[var(--radius)]">
             {openError}
           </div>
         )}
       </div>
 
-      {/* Result Card */}
-      {showResult && openResult && (
+      {/* Result Card cho chế độ 1x */}
+      {showResult && openResult && openCount === 1 && (
         <OpeningResult result={openResult} onReset={handleReset} />
       )}
+
+      {/* Popup Modal Kết Quả cho chế độ 3x */}
+      <MultiOpeningResultModal
+        isOpen={showMultiModal}
+        results={openResults}
+        onClose={() => setShowMultiModal(false)}
+        onReopen={() => {
+          setShowMultiModal(false);
+          handleOpenCase();
+        }}
+        isRequesting={isRequesting}
+      />
 
       {/* Dishes in case */}
       <div className="space-y-3 pt-6 border-t border-[var(--line)]">

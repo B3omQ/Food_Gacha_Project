@@ -21,6 +21,7 @@ export default function Navbar() {
 
   const navLinks = [
     { href: '/', label: 'Hòm món ăn' },
+    { href: '/?mode=multi', label: '⚡ Mở 3 hòm' },
     { href: '/recipes', label: 'Công thức' },
     { href: '/admin', label: 'Quản lý' },
   ];

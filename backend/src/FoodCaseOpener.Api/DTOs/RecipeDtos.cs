@@ -51,3 +51,13 @@ public class RecipeIngredientInputDto
     public decimal Quantity { get; set; }
     public string Unit { get; set; } = string.Empty;
 }
+
+public class BatchImportResultDto
+{
+    public int TotalRows { get; set; }
+    public int ImportedCount { get; set; }
+    public int UpdatedCount { get; set; }
+    public int FailedCount { get; set; }
+    public List<string> Messages { get; set; } = new();
+}
+
