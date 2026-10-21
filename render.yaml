@@ -1,0 +1,19 @@
+# Render Blueprint — Infrastructure as Code
+# Docs: https://docs.render.com/blueprint-spec
+
+services:
+  - type: web
+    name: food-case-opener-api
+    runtime: docker
+    region: singapore            # closest to Vietnam
+    plan: free                   # free tier
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/cases
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DATABASE_URL
+        sync: false              # Paste Neon direct connection string when prompted
+      - key: ALLOWED_ORIGINS
+        value: '*'
