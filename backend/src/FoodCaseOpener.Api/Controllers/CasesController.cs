@@ -229,6 +229,33 @@ public class CasesController : ControllerBase
     }
 
     /// <summary>
+    /// Xóa danh sách hòm hàng loạt
+    /// </summary>
+    [HttpPost("batch-delete")]
+    public async Task<ActionResult> BatchDeleteCases([FromBody] List<int> ids)
+    {
+        if (ids == null || ids.Count == 0)
+        {
+            return BadRequest(new { message = "Danh sách ID hòm rỗng." });
+        }
+
+        var cases = await _context.FoodCases
+            .Include(c => c.CaseRecipes)
+            .Where(c => ids.Contains(c.Id))
+            .ToListAsync();
+
+        if (cases.Count == 0)
+        {
+            return NotFound(new { message = "Không tìm thấy hòm nào phù hợp để xóa." });
+        }
+
+        _context.FoodCases.RemoveRange(cases);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = $"Đã xóa thành công {cases.Count} hòm.", deletedCount = cases.Count });
+    }
+
+    /// <summary>
     /// Bật / Tắt trạng thái hoạt động của hòm
     /// </summary>
     [HttpPatch("{caseId:int}/toggle-status")]

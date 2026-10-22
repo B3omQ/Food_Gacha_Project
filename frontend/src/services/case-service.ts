@@ -34,6 +34,13 @@ export const caseService = {
     });
   },
 
+  async batchDeleteCases(ids: number[]): Promise<{ message: string; deletedCount: number }> {
+    return apiClient<{ message: string; deletedCount: number }>('api/cases/batch-delete', {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
+  },
+
   async toggleCaseStatus(caseId: number): Promise<{ id: number; isActive: boolean }> {
     return apiClient<{ id: number; isActive: boolean }>(`api/cases/${caseId}/toggle-status`, {
       method: 'PATCH',

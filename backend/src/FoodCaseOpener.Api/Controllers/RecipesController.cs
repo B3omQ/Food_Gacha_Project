@@ -272,6 +272,34 @@ public class RecipesController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Xóa danh sách món ăn hàng loạt
+    /// </summary>
+    [HttpPost("batch-delete")]
+    public async Task<ActionResult> BatchDeleteRecipes([FromBody] List<int> ids)
+    {
+        if (ids == null || ids.Count == 0)
+        {
+            return BadRequest(new { message = "Danh sách ID món ăn rỗng." });
+        }
+
+        var recipes = await _context.Recipes
+            .Include(r => r.RecipeIngredients)
+            .Include(r => r.CaseRecipes)
+            .Where(r => ids.Contains(r.Id))
+            .ToListAsync();
+
+        if (recipes.Count == 0)
+        {
+            return NotFound(new { message = "Không tìm thấy món ăn nào phù hợp để xóa." });
+        }
+
+        _context.Recipes.RemoveRange(recipes);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = $"Đã xóa thành công {recipes.Count} món ăn.", deletedCount = recipes.Count });
+    }
+
     private async Task SyncIngredientsAsync(Recipe recipe, List<RecipeIngredientInputDto>? inputs)
     {
         if (inputs == null || inputs.Count == 0) return;

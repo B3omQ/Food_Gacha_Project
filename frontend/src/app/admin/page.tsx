@@ -14,12 +14,16 @@ export default function AdminPage() {
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [loadingCases, setLoadingCases] = useState(false);
   const [editingCase, setEditingCase] = useState<{ id?: number; form: CreateOrUpdateCaseDto } | null>(null);
+  const [selectedCaseIds, setSelectedCaseIds] = useState<number[]>([]);
+  const [isBatchDeletingCases, setIsBatchDeletingCases] = useState(false);
 
   // Recipes state
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [loadingRecipes, setLoadingRecipes] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<{ id?: number; form: CreateOrUpdateRecipeDto } | null>(null);
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<number[]>([]);
+  const [isBatchDeletingRecipes, setIsBatchDeletingRecipes] = useState(false);
 
   // Toast / feedback message
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -122,10 +126,45 @@ export default function AdminPage() {
     if (!confirm(`Bạn có chắc chắn muốn xóa hòm "${name}" không?`)) return;
     try {
       await caseService.deleteCase(caseId);
+      setSelectedCaseIds((prev) => prev.filter((id) => id !== caseId));
       showFeedback('success', `Đã xóa hòm "${name}".`);
       loadCases();
     } catch (err: unknown) {
       showFeedback('error', err instanceof Error ? err.message : 'Lỗi khi xóa hòm.');
+    }
+  };
+
+  const handleToggleSelectCase = (id: number) => {
+    setSelectedCaseIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllCases = () => {
+    if (selectedCaseIds.length === cases.length) {
+      setSelectedCaseIds([]);
+    } else {
+      setSelectedCaseIds(cases.map((c) => c.id));
+    }
+  };
+
+  const handleBatchDeleteCases = async () => {
+    if (selectedCaseIds.length === 0) return;
+    const count = selectedCaseIds.length;
+    if (!confirm(`Bạn có chắc chắn muốn xóa ${count} hòm đã chọn không? Thao tác này sẽ xóa vĩnh viễn các hòm này.`)) {
+      return;
+    }
+
+    try {
+      setIsBatchDeletingCases(true);
+      const res = await caseService.batchDeleteCases(selectedCaseIds);
+      showFeedback('success', res.message || `Đã xóa thành công ${count} hòm.`);
+      setSelectedCaseIds([]);
+      loadCases();
+    } catch (err: unknown) {
+      showFeedback('error', err instanceof Error ? err.message : 'Lỗi khi xóa danh sách hòm.');
+    } finally {
+      setIsBatchDeletingCases(false);
     }
   };
 
@@ -211,10 +250,47 @@ export default function AdminPage() {
     if (!confirm(`Bạn có chắc chắn muốn xóa món "${name}" không?`)) return;
     try {
       await recipeService.deleteRecipe(recipeId);
+      setSelectedRecipeIds((prev) => prev.filter((id) => id !== recipeId));
       showFeedback('success', `Đã xóa món "${name}".`);
       loadRecipes();
+      loadCases();
     } catch (err: unknown) {
       showFeedback('error', err instanceof Error ? err.message : 'Lỗi khi xóa món ăn.');
+    }
+  };
+
+  const handleToggleSelectRecipe = (id: number) => {
+    setSelectedRecipeIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllRecipes = () => {
+    if (selectedRecipeIds.length === recipes.length) {
+      setSelectedRecipeIds([]);
+    } else {
+      setSelectedRecipeIds(recipes.map((r) => r.id));
+    }
+  };
+
+  const handleBatchDeleteRecipes = async () => {
+    if (selectedRecipeIds.length === 0) return;
+    const count = selectedRecipeIds.length;
+    if (!confirm(`Bạn có chắc chắn muốn xóa ${count} món ăn đã chọn không? Thao tác này sẽ xóa các món này khỏi tất cả các hòm liên quan.`)) {
+      return;
+    }
+
+    try {
+      setIsBatchDeletingRecipes(true);
+      const res = await recipeService.batchDeleteRecipes(selectedRecipeIds);
+      showFeedback('success', res.message || `Đã xóa thành công ${count} món ăn.`);
+      setSelectedRecipeIds([]);
+      loadRecipes();
+      loadCases();
+    } catch (err: unknown) {
+      showFeedback('error', err instanceof Error ? err.message : 'Lỗi khi xóa danh sách món ăn.');
+    } finally {
+      setIsBatchDeletingRecipes(false);
     }
   };
 
@@ -275,18 +351,47 @@ export default function AdminPage() {
       {/* ================= TAB 1: CASES MANAGEMENT ================= */}
       {activeTab === 'cases' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h2 className="text-lg font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)]">
               Danh sách hòm
             </h2>
-            <button
-              type="button"
-              onClick={handleOpenCreateCase}
-              className="btn-gold text-xs font-semibold py-1.5 px-3 cursor-pointer"
-            >
-              Thêm hòm mới
-            </button>
+            <div className="flex items-center gap-2">
+              {selectedCaseIds.length > 0 && (
+                <button
+                  type="button"
+                  disabled={isBatchDeletingCases}
+                  onClick={handleBatchDeleteCases}
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded-[var(--radius)] cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm"
+                >
+                  <span>🗑️</span>
+                  <span>{isBatchDeletingCases ? 'Đang xóa...' : `Xóa ${selectedCaseIds.length} hòm đã chọn`}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleOpenCreateCase}
+                className="btn-gold text-xs font-semibold py-1.5 px-3 cursor-pointer"
+              >
+                Thêm hòm mới
+              </button>
+            </div>
           </div>
+
+          {/* Banner thông báo số lượng hòm được chọn */}
+          {selectedCaseIds.length > 0 && (
+            <div className="flex items-center justify-between p-2.5 bg-red-950/30 border border-red-500/30 rounded-[var(--radius)] text-xs animate-fade-in">
+              <span className="text-[var(--text)]">
+                Đã chọn <strong className="text-[var(--gold)]">{selectedCaseIds.length}</strong> / {cases.length} hòm
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedCaseIds([])}
+                className="text-[var(--muted)] hover:text-[var(--text)] underline cursor-pointer"
+              >
+                Bỏ chọn tất cả
+              </button>
+            </div>
+          )}
 
           {loadingCases ? (
             <div className="py-10 text-sm text-[var(--muted)]">Đang tải danh sách hòm...</div>
@@ -297,6 +402,18 @@ export default function AdminPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-[var(--line)] text-xs text-[var(--muted)] uppercase font-medium">
                   <tr>
+                    <th className="py-2.5 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={cases.length > 0 && selectedCaseIds.length === cases.length}
+                        ref={(el) => {
+                          if (el) el.indeterminate = selectedCaseIds.length > 0 && selectedCaseIds.length < cases.length;
+                        }}
+                        onChange={handleSelectAllCases}
+                        className="w-4 h-4 rounded-[var(--radius)] cursor-pointer accent-[var(--gold)]"
+                        title="Chọn tất cả hòm"
+                      />
+                    </th>
                     <th className="py-2.5 px-3">ID</th>
                     <th className="py-2.5 px-3">Ảnh</th>
                     <th className="py-2.5 px-3">Tên hòm</th>
@@ -306,55 +423,71 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--line)]">
-                  {cases.map((item) => (
-                    <tr key={item.id} className="hover:bg-[var(--bg)]/40 transition-colors">
-                      <td className="py-2.5 px-3 text-xs text-[var(--muted)] font-mono">#{item.id}</td>
-                      <td className="py-2.5 px-3">
-                        <div className="w-10 h-10 rounded-[var(--radius)] overflow-hidden bg-[var(--bg)] border border-[var(--line)]">
-                          {item.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs text-[var(--muted)]">
-                              đĩa
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <div className="font-medium text-[var(--text)]">{item.name}</div>
-                        <div className="text-xs text-[var(--muted)] line-clamp-1">{item.description}</div>
-                      </td>
-                      <td className="py-2.5 px-3 text-xs text-[var(--text)]">
-                        {item.recipeCount} món
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleCaseStatus(item.id)}
-                          className="text-xs underline text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
-                        >
-                          {item.isActive ? 'Đang mở' : 'Tạm khóa'}
-                        </button>
-                      </td>
-                      <td className="py-2.5 px-3 text-right space-x-3">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditCase(item.id)}
-                          className="text-xs text-[var(--text)] hover:underline cursor-pointer"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCase(item.id, item.name)}
-                          className="text-xs text-[var(--r4)] hover:underline cursor-pointer"
-                        >
-                          Xóa
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {cases.map((item) => {
+                    const isSelected = selectedCaseIds.includes(item.id);
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`transition-colors ${
+                          isSelected ? 'bg-[var(--gold)]/10' : 'hover:bg-[var(--bg)]/40'
+                        }`}
+                      >
+                        <td className="py-2.5 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectCase(item.id)}
+                            className="w-4 h-4 rounded-[var(--radius)] cursor-pointer accent-[var(--gold)]"
+                          />
+                        </td>
+                        <td className="py-2.5 px-3 text-xs text-[var(--muted)] font-mono">#{item.id}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="w-10 h-10 rounded-[var(--radius)] overflow-hidden bg-[var(--bg)] border border-[var(--line)]">
+                            {item.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs text-[var(--muted)]">
+                                đĩa
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="font-medium text-[var(--text)]">{item.name}</div>
+                          <div className="text-xs text-[var(--muted)] line-clamp-1">{item.description}</div>
+                        </td>
+                        <td className="py-2.5 px-3 text-xs text-[var(--text)]">
+                          {item.recipeCount} món
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCaseStatus(item.id)}
+                            className="text-xs underline text-[var(--muted)] hover:text-[var(--text)] cursor-pointer"
+                          >
+                            {item.isActive ? 'Đang mở' : 'Tạm khóa'}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-3 text-right space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditCase(item.id)}
+                            className="text-xs text-[var(--text)] hover:underline cursor-pointer"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCase(item.id, item.name)}
+                            className="text-xs text-[var(--r4)] hover:underline cursor-pointer"
+                          >
+                            Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -369,7 +502,18 @@ export default function AdminPage() {
             <h2 className="text-lg font-bold font-['Barlow_Condensed',sans-serif] text-[var(--text)]">
               Danh sách món ăn
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {selectedRecipeIds.length > 0 && (
+                <button
+                  type="button"
+                  disabled={isBatchDeletingRecipes}
+                  onClick={handleBatchDeleteRecipes}
+                  className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-1.5 px-3 rounded-[var(--radius)] cursor-pointer flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm"
+                >
+                  <span>🗑️</span>
+                  <span>{isBatchDeletingRecipes ? 'Đang xóa...' : `Xóa ${selectedRecipeIds.length} món đã chọn`}</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsExcelModalOpen(true)}
@@ -389,6 +533,22 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* Banner thông báo số lượng món ăn được chọn */}
+          {selectedRecipeIds.length > 0 && (
+            <div className="flex items-center justify-between p-2.5 bg-red-950/30 border border-red-500/30 rounded-[var(--radius)] text-xs animate-fade-in">
+              <span className="text-[var(--text)]">
+                Đã chọn <strong className="text-[var(--gold)]">{selectedRecipeIds.length}</strong> / {recipes.length} món ăn
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedRecipeIds([])}
+                className="text-[var(--muted)] hover:text-[var(--text)] underline cursor-pointer"
+              >
+                Bỏ chọn tất cả
+              </button>
+            </div>
+          )}
+
           {loadingRecipes ? (
             <div className="py-10 text-sm text-[var(--muted)]">Đang tải danh sách món ăn...</div>
           ) : recipes.length === 0 ? (
@@ -398,6 +558,18 @@ export default function AdminPage() {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-[var(--line)] text-xs text-[var(--muted)] uppercase font-medium">
                   <tr>
+                    <th className="py-2.5 px-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={recipes.length > 0 && selectedRecipeIds.length === recipes.length}
+                        ref={(el) => {
+                          if (el) el.indeterminate = selectedRecipeIds.length > 0 && selectedRecipeIds.length < recipes.length;
+                        }}
+                        onChange={handleSelectAllRecipes}
+                        className="w-4 h-4 rounded-[var(--radius)] cursor-pointer accent-[var(--gold)]"
+                        title="Chọn tất cả món ăn"
+                      />
+                    </th>
                     <th className="py-2.5 px-3">ID</th>
                     <th className="py-2.5 px-3">Ảnh</th>
                     <th className="py-2.5 px-3">Tên món</th>
@@ -408,48 +580,64 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--line)]">
-                  {recipes.map((r) => (
-                    <tr key={r.id} className="hover:bg-[var(--bg)]/40 transition-colors">
-                      <td className="py-2.5 px-3 text-xs text-[var(--muted)] font-mono">#{r.id}</td>
-                      <td className="py-2.5 px-3">
-                        <div className="w-10 h-10 rounded-[var(--radius)] overflow-hidden bg-[var(--bg)] border border-[var(--line)]">
-                          {r.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={r.imageUrl} alt={r.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs text-[var(--muted)]">
-                              đĩa
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <div className="font-medium text-[var(--text)]">{r.name}</div>
-                        <div className="text-xs text-[var(--muted)] line-clamp-1">{r.description}</div>
-                      </td>
-                      <td className="py-2.5 px-3 text-xs text-[var(--muted)]">{r.cookingTimeMinutes} phút</td>
-                      <td className="py-2.5 px-3 text-xs text-[var(--muted)]">
-                        {r.estimatedCost ? `${Math.round(r.estimatedCost / 1000)}k` : 'Bình dân'}
-                      </td>
-                      <td className="py-2.5 px-3 text-xs text-[var(--text)]">{r.difficulty}</td>
-                      <td className="py-2.5 px-3 text-right space-x-3">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditRecipe(r.id)}
-                          className="text-xs text-[var(--text)] hover:underline cursor-pointer"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteRecipe(r.id, r.name)}
-                          className="text-xs text-[var(--r4)] hover:underline cursor-pointer"
-                        >
-                          Xóa
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {recipes.map((r) => {
+                    const isSelected = selectedRecipeIds.includes(r.id);
+                    return (
+                      <tr
+                        key={r.id}
+                        className={`transition-colors ${
+                          isSelected ? 'bg-[var(--gold)]/10' : 'hover:bg-[var(--bg)]/40'
+                        }`}
+                      >
+                        <td className="py-2.5 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectRecipe(r.id)}
+                            className="w-4 h-4 rounded-[var(--radius)] cursor-pointer accent-[var(--gold)]"
+                          />
+                        </td>
+                        <td className="py-2.5 px-3 text-xs text-[var(--muted)] font-mono">#{r.id}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="w-10 h-10 rounded-[var(--radius)] overflow-hidden bg-[var(--bg)] border border-[var(--line)]">
+                            {r.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={r.imageUrl} alt={r.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs text-[var(--muted)]">
+                                đĩa
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="font-medium text-[var(--text)]">{r.name}</div>
+                          <div className="text-xs text-[var(--muted)] line-clamp-1">{r.description}</div>
+                        </td>
+                        <td className="py-2.5 px-3 text-xs text-[var(--muted)]">{r.cookingTimeMinutes} phút</td>
+                        <td className="py-2.5 px-3 text-xs text-[var(--muted)]">
+                          {r.estimatedCost ? `${Math.round(r.estimatedCost / 1000)}k` : 'Bình dân'}
+                        </td>
+                        <td className="py-2.5 px-3 text-xs text-[var(--text)]">{r.difficulty}</td>
+                        <td className="py-2.5 px-3 text-right space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditRecipe(r.id)}
+                            className="text-xs text-[var(--text)] hover:underline cursor-pointer"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRecipe(r.id, r.name)}
+                            className="text-xs text-[var(--r4)] hover:underline cursor-pointer"
+                          >
+                            Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -44,6 +44,13 @@ export const recipeService = {
     });
   },
 
+  async batchDeleteRecipes(ids: number[]): Promise<{ message: string; deletedCount: number }> {
+    return apiClient<{ message: string; deletedCount: number }>('api/recipes/batch-delete', {
+      method: 'POST',
+      body: JSON.stringify(ids),
+    });
+  },
+
   async getAllIngredients(): Promise<IngredientOption[]> {
     return apiClient<IngredientOption[]>('api/recipes/ingredients');
   },
